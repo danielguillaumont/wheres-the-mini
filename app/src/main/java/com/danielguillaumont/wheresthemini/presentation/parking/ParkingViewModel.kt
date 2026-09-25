@@ -28,7 +28,8 @@ data class ParkingFormState(
     val reminderError: String? = null,
     val location: ParkingLocation? = null,
     val isLocating: Boolean = false,
-    val locationError: String? = null
+    val locationError: String? = null,
+    val photoPath: String? = null
 )
 
 data class ParkingUiState(
@@ -132,7 +133,11 @@ class ParkingViewModel(
 
                         location =
                             currentParking
-                                .location
+                                .location,
+
+                        photoPath =
+                            currentParking
+                                .photoPath
                     )
             )
     }
@@ -178,6 +183,34 @@ class ParkingViewModel(
                         .copy(
                             note =
                                 value
+                        )
+            )
+    }
+
+    fun setPhotoPath(
+        photoPath: String
+    ) {
+        _uiState.value =
+            _uiState.value.copy(
+                form =
+                    _uiState.value
+                        .form
+                        .copy(
+                            photoPath =
+                                photoPath
+                        )
+            )
+    }
+
+    fun clearPhoto() {
+        _uiState.value =
+            _uiState.value.copy(
+                form =
+                    _uiState.value
+                        .form
+                        .copy(
+                            photoPath =
+                                null
                         )
             )
     }
@@ -413,7 +446,10 @@ class ParkingViewModel(
                     form.parkingExpiryMillis,
 
                 reminderEnabled =
-                    form.reminderEnabled
+                    form.reminderEnabled,
+
+                photoPath =
+                    form.photoPath
             )
 
         _uiState.value =

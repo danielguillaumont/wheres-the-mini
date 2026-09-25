@@ -16,5 +16,6 @@ data class ParkingSession(
     val location: ParkingLocation? = null,
     val recoveredAtMillis: Long? = null,
     val parkingExpiryMillis: Long? = null,
-    val reminderEnabled: Boolean = false
+    val reminderEnabled: Boolean = false,
+    val photoPath: String? = null
 )

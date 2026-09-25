@@ -33,5 +33,7 @@ data class ParkingEntity(
 
     val parkingExpiryMillis: Long?,
 
-    val reminderEnabled: Boolean
+    val reminderEnabled: Boolean,
+
+    val photoPath: String?
 )

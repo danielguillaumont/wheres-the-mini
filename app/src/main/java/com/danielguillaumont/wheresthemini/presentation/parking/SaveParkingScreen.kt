@@ -37,7 +37,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -77,6 +76,8 @@ fun SaveParkingScreen(
     onClearParkingExpiry: () -> Unit,
     onReminderEnabledChange: (Boolean) -> Unit,
     onNotificationPermissionDenied: () -> Unit,
+    onPhotoCaptured: (String) -> Unit,
+    onRemovePhoto: () -> Unit,
     onCaptureLocation: () -> Unit,
     onLocationPermissionDenied: () -> Unit,
     onBackClick: () -> Unit,
@@ -98,13 +99,6 @@ fun SaveParkingScreen(
         mutableStateOf<
                 PendingParkingPhoto?
                 >(null)
-    }
-
-    var capturedPhotoPath by
-    rememberSaveable {
-        mutableStateOf<String?>(
-            null
-        )
     }
 
     val locationPermissionLauncher =
@@ -159,40 +153,26 @@ fun SaveParkingScreen(
                     .TakePicture()
         ) { success ->
 
-            val pending =
+            val photo =
                 pendingPhoto
 
             if (
                 success &&
-                pending != null
+                photo != null
             ) {
-                val previousPhoto =
-                    capturedPhotoPath
+                onPhotoCaptured(
+                    photo.filePath
+                )
+            } else {
+                photo?.let {
+                        cancelledPhoto ->
 
-                capturedPhotoPath =
-                    pending.filePath
-
-                if (
-                    previousPhoto != null &&
-                    previousPhoto !=
-                    pending.filePath
-                ) {
                     photoManager
                         .deletePhoto(
-                            previousPhoto
+                            cancelledPhoto
+                                .filePath
                         )
                 }
-            } else {
-                pending
-                    ?.let {
-                            cancelledPhoto ->
-
-                        photoManager
-                            .deletePhoto(
-                                cancelledPhoto
-                                    .filePath
-                            )
-                    }
             }
 
             pendingPhoto =
@@ -311,21 +291,6 @@ fun SaveParkingScreen(
             )
     }
 
-    fun removeParkingPhoto() {
-        capturedPhotoPath
-            ?.let {
-                    filePath ->
-
-                photoManager
-                    .deletePhoto(
-                        filePath
-                    )
-            }
-
-        capturedPhotoPath =
-            null
-    }
-
     Scaffold(
         modifier =
             modifier.fillMaxSize(),
@@ -334,19 +299,20 @@ fun SaveParkingScreen(
     ) { innerPadding ->
 
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(
-                    innerPadding
-                )
-                .statusBarsPadding()
-                .verticalScroll(
-                    rememberScrollState()
-                )
-                .padding(
-                    horizontal = 22.dp,
-                    vertical = 14.dp
-                )
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(
+                        innerPadding
+                    )
+                    .statusBarsPadding()
+                    .verticalScroll(
+                        rememberScrollState()
+                    )
+                    .padding(
+                        horizontal = 22.dp,
+                        vertical = 14.dp
+                    )
         ) {
 
             Row(
@@ -443,9 +409,6 @@ fun SaveParkingScreen(
                 formState =
                     formState,
 
-                capturedPhotoPath =
-                    capturedPhotoPath,
-
                 onParkingLevelChange =
                     onParkingLevelChange,
 
@@ -471,7 +434,7 @@ fun SaveParkingScreen(
                     ::takeParkingPhoto,
 
                 onRemoveParkingPhoto =
-                    ::removeParkingPhoto
+                    onRemovePhoto
             )
 
             Spacer(
@@ -541,25 +504,15 @@ fun SaveParkingScreen(
 @Composable
 private fun ParkingTicket(
     formState: ParkingFormState,
-    capturedPhotoPath: String?,
-    onParkingLevelChange:
-        (String) -> Unit,
-    onSpotNumberChange:
-        (String) -> Unit,
-    onNoteChange:
-        (String) -> Unit,
-    onParkingExpirySelected:
-        (Int, Int) -> Unit,
-    onClearParkingExpiry:
-        () -> Unit,
-    onReminderChange:
-        (Boolean) -> Unit,
-    onCaptureLocation:
-        () -> Unit,
-    onTakeParkingPhoto:
-        () -> Unit,
-    onRemoveParkingPhoto:
-        () -> Unit
+    onParkingLevelChange: (String) -> Unit,
+    onSpotNumberChange: (String) -> Unit,
+    onNoteChange: (String) -> Unit,
+    onParkingExpirySelected: (Int, Int) -> Unit,
+    onClearParkingExpiry: () -> Unit,
+    onReminderChange: (Boolean) -> Unit,
+    onCaptureLocation: () -> Unit,
+    onTakeParkingPhoto: () -> Unit,
+    onRemoveParkingPhoto: () -> Unit
 ) {
     Surface(
         modifier =
@@ -642,13 +595,10 @@ private fun ParkingTicket(
             LocationCard(
                 location =
                     formState.location,
-
                 isLocating =
                     formState.isLocating,
-
                 locationError =
                     formState.locationError,
-
                 onCaptureLocation =
                     onCaptureLocation
             )
@@ -664,8 +614,7 @@ private fun ParkingTicket(
                 label =
                     "FLOOR / LEVEL",
                 value =
-                    formState
-                        .parkingLevel,
+                    formState.parkingLevel,
                 onValueChange =
                     onParkingLevelChange,
                 placeholder =
@@ -683,8 +632,7 @@ private fun ParkingTicket(
                 label =
                     "SPOT NUMBER",
                 value =
-                    formState
-                        .spotNumber,
+                    formState.spotNumber,
                 onValueChange =
                     onSpotNumberChange,
                 placeholder =
@@ -718,16 +666,11 @@ private fun ParkingTicket(
 
             ParkingExpirySelector(
                 expiryText =
-                    formState
-                        .parkingExpiry,
-
+                    formState.parkingExpiry,
                 expiryMillis =
-                    formState
-                        .parkingExpiryMillis,
-
+                    formState.parkingExpiryMillis,
                 onParkingExpirySelected =
                     onParkingExpirySelected,
-
                 onClearParkingExpiry =
                     onClearParkingExpiry
             )
@@ -742,7 +685,6 @@ private fun ParkingTicket(
             ParkingReminderCard(
                 formState =
                     formState,
-
                 onReminderChange =
                     onReminderChange
             )
@@ -755,12 +697,10 @@ private fun ParkingTicket(
             )
 
             PhotoEvidenceSection(
-                capturedPhotoPath =
-                    capturedPhotoPath,
-
+                photoPath =
+                    formState.photoPath,
                 onTakeParkingPhoto =
                     onTakeParkingPhoto,
-
                 onRemoveParkingPhoto =
                     onRemoveParkingPhoto
             )
@@ -807,7 +747,7 @@ private fun ParkingTicket(
 
 @Composable
 private fun PhotoEvidenceSection(
-    capturedPhotoPath: String?,
+    photoPath: String?,
     onTakeParkingPhoto: () -> Unit,
     onRemoveParkingPhoto: () -> Unit
 ) {
@@ -830,8 +770,7 @@ private fun PhotoEvidenceSection(
     )
 
     if (
-        capturedPhotoPath ==
-        null
+        photoPath == null
     ) {
         OutlinedButton(
             onClick =
@@ -885,18 +824,17 @@ private fun PhotoEvidenceSection(
 
     val photoBitmap =
         remember(
-            capturedPhotoPath
+            photoPath
         ) {
             BitmapFactory
                 .decodeFile(
-                    capturedPhotoPath
+                    photoPath
                 )
                 ?.asImageBitmap()
         }
 
     if (
-        photoBitmap !=
-        null
+        photoBitmap != null
     ) {
         Image(
             bitmap =
@@ -1051,10 +989,8 @@ private fun PhotoEvidenceSection(
 private fun ParkingExpirySelector(
     expiryText: String,
     expiryMillis: Long?,
-    onParkingExpirySelected:
-        (Int, Int) -> Unit,
-    onClearParkingExpiry:
-        () -> Unit
+    onParkingExpirySelected: (Int, Int) -> Unit,
+    onClearParkingExpiry: () -> Unit
 ) {
     val context =
         LocalContext.current
@@ -1182,10 +1118,8 @@ private fun ParkingExpirySelector(
 
 @Composable
 private fun ParkingReminderCard(
-    formState:
-    ParkingFormState,
-    onReminderChange:
-        (Boolean) -> Unit
+    formState: ParkingFormState,
+    onReminderChange: (Boolean) -> Unit
 ) {
     val hasRealExpiry =
         formState
@@ -1334,14 +1268,10 @@ private fun ParkingReminderCard(
 
 @Composable
 private fun LocationCard(
-    location:
-    ParkingLocation?,
-    isLocating:
-    Boolean,
-    locationError:
-    String?,
-    onCaptureLocation:
-        () -> Unit
+    location: ParkingLocation?,
+    isLocating: Boolean,
+    locationError: String?,
+    onCaptureLocation: () -> Unit
 ) {
     Surface(
         modifier =
@@ -1543,8 +1473,7 @@ private fun LocationCard(
 private fun ParkingTextField(
     label: String,
     value: String,
-    onValueChange:
-        (String) -> Unit,
+    onValueChange: (String) -> Unit,
     placeholder: String
 ) {
     Column {
@@ -1649,8 +1578,7 @@ private fun TicketDivider() {
 }
 
 private fun formatCoordinates(
-    location:
-    ParkingLocation
+    location: ParkingLocation
 ): String {
 
     return String.format(
@@ -1689,6 +1617,10 @@ private fun SaveParkingScreenPreview() {
             onReminderEnabledChange = {},
 
             onNotificationPermissionDenied = {},
+
+            onPhotoCaptured = {},
+
+            onRemovePhoto = {},
 
             onCaptureLocation = {},
 

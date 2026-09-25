@@ -252,6 +252,14 @@ fun AppNavigation() {
                     parkingViewModel::
                     setNotificationPermissionDenied,
 
+                onPhotoCaptured =
+                    parkingViewModel::
+                    setPhotoPath,
+
+                onRemovePhoto =
+                    parkingViewModel::
+                    clearPhoto,
+
                 onCaptureLocation = {
 
                     parkingViewModel

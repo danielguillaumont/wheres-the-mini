@@ -11,7 +11,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
     entities = [
         ParkingEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class WheresTheMiniDatabase :
@@ -52,6 +52,25 @@ abstract class WheresTheMiniDatabase :
                 }
             }
 
+        private val MIGRATION_2_3 =
+            object : Migration(
+                2,
+                3
+            ) {
+
+                override fun migrate(
+                    database: SupportSQLiteDatabase
+                ) {
+
+                    database.execSQL(
+                        """
+                        ALTER TABLE parking_sessions
+                        ADD COLUMN photoPath TEXT
+                        """.trimIndent()
+                    )
+                }
+            }
+
         fun getDatabase(
             context: Context
         ): WheresTheMiniDatabase {
@@ -66,7 +85,8 @@ abstract class WheresTheMiniDatabase :
                             "wheres_the_mini.db"
                         )
                             .addMigrations(
-                                MIGRATION_1_2
+                                MIGRATION_1_2,
+                                MIGRATION_2_3
                             )
                             .build()
 
