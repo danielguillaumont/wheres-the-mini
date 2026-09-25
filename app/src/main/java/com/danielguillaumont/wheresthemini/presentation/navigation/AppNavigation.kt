@@ -1,5 +1,6 @@
 package com.danielguillaumont.wheresthemini.presentation.navigation
 
+import android.widget.Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -11,6 +12,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.danielguillaumont.wheresthemini.data.local.WheresTheMiniDatabase
 import com.danielguillaumont.wheresthemini.data.location.FusedLocationClient
+import com.danielguillaumont.wheresthemini.data.navigation.MapNavigator
 import com.danielguillaumont.wheresthemini.data.repository.ParkingRepository
 import com.danielguillaumont.wheresthemini.presentation.history.HistoryScreen
 import com.danielguillaumont.wheresthemini.presentation.home.HomeScreen
@@ -19,15 +21,19 @@ import com.danielguillaumont.wheresthemini.presentation.parking.ParkingViewModel
 import com.danielguillaumont.wheresthemini.presentation.parking.SaveParkingScreen
 
 private object Routes {
-    const val HOME = "home"
+    const val HOME =
+        "home"
+
     const val SAVE_PARKING =
         "save_parking"
+
     const val HISTORY =
         "history"
 }
 
 @Composable
 fun AppNavigation() {
+
     val context =
         LocalContext.current
 
@@ -36,6 +42,7 @@ fun AppNavigation() {
 
     val database =
         remember(context) {
+
             WheresTheMiniDatabase
                 .getDatabase(
                     context
@@ -44,6 +51,7 @@ fun AppNavigation() {
 
     val repository =
         remember(database) {
+
             ParkingRepository(
                 parkingDao =
                     database.parkingDao()
@@ -52,6 +60,7 @@ fun AppNavigation() {
 
     val viewModelFactory =
         remember(repository) {
+
             ParkingViewModelFactory(
                 repository =
                     repository
@@ -67,8 +76,17 @@ fun AppNavigation() {
 
     val locationClient =
         remember(context) {
+
             FusedLocationClient(
                 context
+            )
+        }
+
+    val mapNavigator =
+        remember(context) {
+
+            MapNavigator(
+                context.applicationContext
             )
         }
 
@@ -80,13 +98,16 @@ fun AppNavigation() {
     NavHost(
         navController =
             navController,
+
         startDestination =
             Routes.HOME
     ) {
+
         composable(
             route =
                 Routes.HOME
         ) {
+
             HomeScreen(
                 currentParking =
                     uiState.currentParking,
@@ -96,34 +117,85 @@ fun AppNavigation() {
                         .firstOrNull(),
 
                 onParkedHereClick = {
+
                     if (
                         uiState.currentParking ==
                         null
                     ) {
+
                         parkingViewModel
                             .beginNewParking()
+
                     } else {
+
                         parkingViewModel
                             .beginEditingCurrentParking()
                     }
 
-                    navController.navigate(
-                        Routes.SAVE_PARKING
-                    )
+                    navController
+                        .navigate(
+                            Routes.SAVE_PARKING
+                        )
+                },
+
+                onNavigateToMiniClick = {
+
+                    val location =
+                        uiState
+                            .currentParking
+                            ?.location
+
+                    if (
+                        location == null
+                    ) {
+
+                        Toast
+                            .makeText(
+                                context,
+                                "No saved Mini location is available.",
+                                Toast.LENGTH_SHORT
+                            )
+                            .show()
+
+                    } else {
+
+                        val opened =
+                            mapNavigator
+                                .openMiniLocation(
+                                    location
+                                )
+
+                        if (
+                            !opened
+                        ) {
+
+                            Toast
+                                .makeText(
+                                    context,
+                                    "No maps app or browser could be opened.",
+                                    Toast.LENGTH_LONG
+                                )
+                                .show()
+                        }
+                    }
                 },
 
                 onFoundItClick = {
+
                     parkingViewModel
                         .clearCurrentParking()
                 },
 
                 onHistoryClick = {
-                    navController.navigate(
-                        Routes.HISTORY
-                    ) {
-                        launchSingleTop =
-                            true
-                    }
+
+                    navController
+                        .navigate(
+                            Routes.HISTORY
+                        ) {
+
+                            launchSingleTop =
+                                true
+                        }
                 },
 
                 onInfoClick = {}
@@ -134,6 +206,7 @@ fun AppNavigation() {
             route =
                 Routes.SAVE_PARKING
         ) {
+
             SaveParkingScreen(
                 formState =
                     uiState.form,
@@ -155,11 +228,13 @@ fun AppNavigation() {
                     updateParkingExpiry,
 
                 onCaptureLocation = {
+
                     parkingViewModel
                         .beginLocationCapture()
 
                     locationClient
                         .getCurrentLocation(
+
                             onSuccess = {
                                     location ->
 
@@ -181,16 +256,19 @@ fun AppNavigation() {
                 },
 
                 onLocationPermissionDenied = {
+
                     parkingViewModel
                         .setLocationPermissionDenied()
                 },
 
                 onBackClick = {
+
                     navController
                         .popBackStack()
                 },
 
                 onSaveClick = {
+
                     parkingViewModel
                         .saveParking()
 
@@ -204,24 +282,28 @@ fun AppNavigation() {
             route =
                 Routes.HISTORY
         ) {
+
             HistoryScreen(
                 parkingHistory =
                     uiState.parkingHistory,
 
                 onMiniClick = {
-                    navController.navigate(
-                        Routes.HOME
-                    ) {
-                        popUpTo(
+
+                    navController
+                        .navigate(
                             Routes.HOME
                         ) {
-                            inclusive =
-                                false
-                        }
 
-                        launchSingleTop =
-                            true
-                    }
+                            popUpTo(
+                                Routes.HOME
+                            ) {
+                                inclusive =
+                                    false
+                            }
+
+                            launchSingleTop =
+                                true
+                        }
                 },
 
                 onInfoClick = {}

@@ -29,6 +29,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.danielguillaumont.wheresthemini.domain.model.ParkingLocation
 import com.danielguillaumont.wheresthemini.domain.model.ParkingSession
 import com.danielguillaumont.wheresthemini.presentation.components.MiniBottomNavigation
 import com.danielguillaumont.wheresthemini.presentation.components.MiniTab
@@ -51,6 +52,7 @@ fun HomeScreen(
     currentParking: ParkingSession? = null,
     lastParking: ParkingSession? = null,
     onParkedHereClick: () -> Unit = {},
+    onNavigateToMiniClick: () -> Unit = {},
     onFoundItClick: () -> Unit = {},
     onHistoryClick: () -> Unit = {},
     onInfoClick: () -> Unit = {},
@@ -65,12 +67,9 @@ fun HomeScreen(
             MiniBottomNavigation(
                 selectedTab =
                     MiniTab.MINI,
-
                 onMiniClick = {},
-
                 onHistoryClick =
                     onHistoryClick,
-
                 onInfoClick =
                     onInfoClick
             )
@@ -89,6 +88,7 @@ fun HomeScreen(
             horizontalAlignment =
                 Alignment.CenterHorizontally
         ) {
+
             Spacer(
                 modifier =
                     Modifier.height(
@@ -184,8 +184,53 @@ fun HomeScreen(
             }
 
             if (
+                currentParking?.location !=
+                null
+            ) {
+
+                Spacer(
+                    modifier =
+                        Modifier.height(
+                            10.dp
+                        )
+                )
+
+                Button(
+                    onClick =
+                        onNavigateToMiniClick,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(
+                            56.dp
+                        ),
+                    shape =
+                        RoundedCornerShape(
+                            16.dp
+                        ),
+                    colors =
+                        ButtonDefaults
+                            .buttonColors(
+                                containerColor =
+                                    BonnetBlack,
+                                contentColor =
+                                    MiniCitron
+                            )
+                ) {
+                    Text(
+                        text =
+                            "TAKE ME TO THE MINI →",
+                        style =
+                            MaterialTheme
+                                .typography
+                                .labelMedium
+                    )
+                }
+            }
+
+            if (
                 currentParking != null
             ) {
+
                 Spacer(
                     modifier =
                         Modifier.height(
@@ -290,6 +335,7 @@ private fun MiniHeroCard(
             horizontalAlignment =
                 Alignment.CenterHorizontally
         ) {
+
             Box(
                 modifier =
                     Modifier
@@ -380,6 +426,7 @@ private fun MiniIllustration() {
                     125.dp
                 )
     ) {
+
         val canvasWidth =
             size.width
 
@@ -672,6 +719,7 @@ private fun ParkingRecordCard(
                     18.dp
                 )
         ) {
+
             Text(
                 text =
                     if (
@@ -721,7 +769,9 @@ private fun ParkingRecordCard(
             )
 
             when {
+
                 currentParking != null -> {
+
                     ParkingDetails(
                         parking =
                             currentParking,
@@ -731,6 +781,7 @@ private fun ParkingRecordCard(
                 }
 
                 lastParking != null -> {
+
                     ParkingDetails(
                         parking =
                             lastParking,
@@ -740,6 +791,7 @@ private fun ParkingRecordCard(
                 }
 
                 else -> {
+
                     Text(
                         text =
                             "NO PREVIOUS DISASTERS",
@@ -780,6 +832,7 @@ private fun ParkingDetails(
     recovered:
     Boolean
 ) {
+
     Text(
         text =
             buildLocationDescription(
@@ -797,7 +850,8 @@ private fun ParkingDetails(
         text =
             "Parked at ${
                 formatParkingTime(
-                    parking.parkedAtMillis
+                    parking
+                        .parkedAtMillis
                 )
             }",
         style =
@@ -817,6 +871,7 @@ private fun ParkingDetails(
         parking.recoveredAtMillis !=
         null
     ) {
+
         Text(
             text =
                 "Recovered at ${
@@ -839,8 +894,10 @@ private fun ParkingDetails(
     }
 
     if (
-        parking.note.isNotBlank()
+        parking.note
+            .isNotBlank()
     ) {
+
         Text(
             text =
                 "“${parking.note}”",
@@ -863,6 +920,7 @@ private fun ParkingDetails(
         parking.parkingExpiry
             .isNotBlank()
     ) {
+
         Text(
             text =
                 "EXPIRES: ${parking.parkingExpiry}",
@@ -882,6 +940,7 @@ private fun ParkingDetails(
     if (
         recovered
     ) {
+
         Text(
             text =
                 "MINI RECOVERED ✓",
@@ -903,6 +962,7 @@ private fun buildLocationDescription(
     parking:
     ParkingSession
 ): String {
+
     val level =
         parking.parkingLevel
             .ifBlank {
@@ -922,6 +982,7 @@ private fun formatParkingTime(
     parkedAtMillis:
     Long
 ): String {
+
     val formatter =
         DateTimeFormatter
             .ofPattern(
@@ -947,6 +1008,7 @@ private fun formatParkingTime(
 )
 @Composable
 private fun HomeScreenEmptyPreview() {
+
     WheresTheMiniTheme {
         HomeScreen()
     }
@@ -958,7 +1020,9 @@ private fun HomeScreenEmptyPreview() {
 )
 @Composable
 private fun HomeScreenParkedPreview() {
+
     WheresTheMiniTheme {
+
         HomeScreen(
             currentParking =
                 ParkingSession(
@@ -972,7 +1036,16 @@ private fun HomeScreenParkedPreview() {
                     parkingExpiry =
                         "4:30 PM",
                     parkedAtMillis =
-                        System.currentTimeMillis()
+                        System.currentTimeMillis(),
+                    location =
+                        ParkingLocation(
+                            latitude =
+                                37.42200,
+                            longitude =
+                                -122.08400,
+                            accuracyMeters =
+                                5f
+                        )
                 )
         )
     }
