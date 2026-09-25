@@ -1,10 +1,13 @@
 package com.danielguillaumont.wheresthemini.presentation.history
 
+import android.graphics.BitmapFactory
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,17 +22,23 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.danielguillaumont.wheresthemini.domain.model.ParkingLocation
 import com.danielguillaumont.wheresthemini.domain.model.ParkingSession
 import com.danielguillaumont.wheresthemini.presentation.components.MiniBottomNavigation
 import com.danielguillaumont.wheresthemini.presentation.components.MiniTab
 import com.danielguillaumont.wheresthemini.ui.theme.AsphaltGrey
 import com.danielguillaumont.wheresthemini.ui.theme.BonnetBlack
+import com.danielguillaumont.wheresthemini.ui.theme.BritishRed
 import com.danielguillaumont.wheresthemini.ui.theme.MiniCitron
 import com.danielguillaumont.wheresthemini.ui.theme.MutedGrey
 import com.danielguillaumont.wheresthemini.ui.theme.TicketPaper
@@ -65,14 +74,17 @@ fun HistoryScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(
+            contentPadding = PaddingValues(
                 start = 22.dp,
                 end = 22.dp,
                 top = 28.dp,
                 bottom = 30.dp
             ),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(
+                16.dp
+            )
         ) {
+
             item {
                 HistoryHeader()
             }
@@ -88,6 +100,7 @@ fun HistoryScreen(
                         parking.id
                     }
                 ) { parking ->
+
                     ParkingHistoryTicket(
                         parking = parking
                     )
@@ -103,6 +116,7 @@ private fun HistoryHeader() {
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.fillMaxWidth()
     ) {
+
         Text(
             text = "PREVIOUS\nMISADVENTURES",
             style = MaterialTheme.typography.displayLarge,
@@ -121,7 +135,9 @@ private fun HistoryHeader() {
         )
 
         Spacer(
-            modifier = Modifier.height(6.dp)
+            modifier = Modifier.height(
+                6.dp
+            )
         )
     }
 }
@@ -145,12 +161,14 @@ private fun EmptyHistoryCard() {
         ),
         color = TicketPaper
     ) {
+
         Column(
             modifier = Modifier.padding(
                 22.dp
             ),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+
             Text(
                 text = "NO PREVIOUS DISASTERS",
                 style = MaterialTheme.typography.titleLarge,
@@ -194,20 +212,24 @@ private fun ParkingHistoryTicket(
         color = TicketPaper,
         shadowElevation = 2.dp
     ) {
+
         Column(
             modifier = Modifier.padding(
                 18.dp
             )
         ) {
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+
                 Column(
                     modifier = Modifier.weight(
                         1f
                     )
                 ) {
+
                     Text(
                         text = formatDate(
                             parking.parkedAtMillis
@@ -236,6 +258,7 @@ private fun ParkingHistoryTicket(
                         alpha = 0.18f
                     )
                 ) {
+
                     Text(
                         text = "RECOVERED ✓",
                         style = MaterialTheme.typography.labelMedium,
@@ -304,6 +327,7 @@ private fun ParkingHistoryTicket(
             if (
                 parking.note.isNotBlank()
             ) {
+
                 Text(
                     text = "“${parking.note}”",
                     style = MaterialTheme.typography.bodyMedium,
@@ -315,23 +339,39 @@ private fun ParkingHistoryTicket(
                 )
             }
 
-            if (
-                parking.location != null
-            ) {
+            parking.location?.let {
+                    location ->
+
                 Text(
-                    text = String.format(
-                        Locale.US,
-                        "GPS %.5f, %.5f",
-                        parking.location.latitude,
-                        parking.location.longitude
+                    text = formatGps(
+                        location
                     ),
                     style = MaterialTheme.typography.labelMedium,
                     color = AsphaltGrey,
                     modifier = Modifier.padding(
-                        top = 11.dp
+                        top = 9.dp
                     )
                 )
             }
+
+            parking.photoPath
+                ?.takeIf {
+                        path ->
+                    path.isNotBlank()
+                }
+                ?.let {
+                        photoPath ->
+
+                    Spacer(
+                        modifier = Modifier.height(
+                            15.dp
+                        )
+                    )
+
+                    ParkingEvidencePhoto(
+                        photoPath = photoPath
+                    )
+                }
 
             Spacer(
                 modifier = Modifier.height(
@@ -339,27 +379,130 @@ private fun ParkingHistoryTicket(
                 )
             )
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(
-                        color = WarmCream,
-                        shape = RoundedCornerShape(
-                            10.dp
-                        )
-                    )
-                    .padding(
-                        11.dp
-                    )
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(
+                    10.dp
+                ),
+                color = WarmCream
             ) {
+
                 Text(
-                    text = parkingComment(
+                    text = incidentComment(
                         parking
                     ),
                     style = MaterialTheme.typography.bodyMedium,
                     fontStyle = FontStyle.Italic,
-                    color = BonnetBlack
+                    color = BonnetBlack,
+                    modifier = Modifier.padding(
+                        horizontal = 12.dp,
+                        vertical = 9.dp
+                    )
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ParkingEvidencePhoto(
+    photoPath: String
+) {
+    val bitmap =
+        remember(
+            photoPath
+        ) {
+            BitmapFactory
+                .decodeFile(
+                    photoPath
+                )
+                ?.asImageBitmap()
+        }
+
+    Column {
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+
+            Text(
+                text = "PHOTOGRAPHIC EVIDENCE",
+                style = MaterialTheme.typography.labelMedium,
+                color = AsphaltGrey,
+                modifier = Modifier.weight(
+                    1f
+                )
+            )
+
+            Text(
+                text = "EXHIBIT A",
+                style = MaterialTheme.typography.labelMedium,
+                color = MiniCitron
+            )
+        }
+
+        Spacer(
+            modifier = Modifier.height(
+                8.dp
+            )
+        )
+
+        if (
+            bitmap != null
+        ) {
+
+            Image(
+                bitmap = bitmap,
+                contentDescription = "Parking evidence photo",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(
+                        150.dp
+                    )
+                    .clip(
+                        RoundedCornerShape(
+                            12.dp
+                        )
+                    ),
+                contentScale = ContentScale.Crop
+            )
+
+            Text(
+                text = "● EVIDENCE FILED WITH INCIDENT",
+                style = MaterialTheme.typography.labelMedium,
+                color = MiniCitron,
+                modifier = Modifier.padding(
+                    top = 7.dp
+                )
+            )
+
+        } else {
+
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(
+                        72.dp
+                    ),
+                shape = RoundedCornerShape(
+                    12.dp
+                ),
+                color = BritishRed.copy(
+                    alpha = 0.08f
+                )
+            ) {
+
+                Box(
+                    contentAlignment = Alignment.Center
+                ) {
+
+                    Text(
+                        text = "EVIDENCE FILE UNAVAILABLE",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = BritishRed
+                    )
+                }
             }
         }
     }
@@ -370,10 +513,12 @@ private fun TicketDivider() {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(1.dp)
+            .height(
+                1.dp
+            )
             .background(
                 BonnetBlack.copy(
-                    alpha = 0.12f
+                    alpha = 0.13f
                 )
             )
     )
@@ -382,15 +527,18 @@ private fun TicketDivider() {
 private fun buildLocationDescription(
     parking: ParkingSession
 ): String {
+
     val level =
-        parking.parkingLevel.ifBlank {
-            "UNKNOWN LEVEL"
-        }
+        parking.parkingLevel
+            .ifBlank {
+                "LEVEL ?"
+            }
 
     val spot =
-        parking.spotNumber.ifBlank {
-            "UNKNOWN SPOT"
-        }
+        parking.spotNumber
+            .ifBlank {
+                "?"
+            }
 
     return "$level · SPOT $spot"
 }
@@ -398,9 +546,10 @@ private fun buildLocationDescription(
 private fun formatDate(
     millis: Long
 ): String {
+
     val formatter =
         DateTimeFormatter.ofPattern(
-            "MMM d, yyyy",
+            "MMM dd, yyyy",
             Locale.US
         )
 
@@ -422,6 +571,7 @@ private fun formatDate(
 private fun formatTime(
     millis: Long
 ): String {
+
     val formatter =
         DateTimeFormatter.ofPattern(
             "h:mm a",
@@ -444,58 +594,61 @@ private fun formatDuration(
     parkedAtMillis: Long,
     recoveredAtMillis: Long
 ): String {
-    val totalMinutes =
+
+    val durationMillis =
         max(
             0L,
-            (
-                    recoveredAtMillis -
-                            parkedAtMillis
-                    ) / 60_000L
+            recoveredAtMillis -
+                    parkedAtMillis
         )
-
-    val hours =
-        totalMinutes / 60L
 
     val minutes =
-        totalMinutes % 60L
+        durationMillis /
+                60_000L
 
-    return if (
-        hours > 0
-    ) {
-        "${hours}h ${minutes}m parked"
-    } else {
-        "${minutes}m parked"
-    }
+    return "${minutes}m parked"
 }
 
-private fun parkingComment(
+private fun formatGps(
+    location: ParkingLocation
+): String {
+
+    return String.format(
+        Locale.US,
+        "GPS %.5f, %.5f",
+        location.latitude,
+        location.longitude
+    )
+}
+
+private fun incidentComment(
     parking: ParkingSession
 ): String {
+
     val recoveredAt =
         parking.recoveredAtMillis
-            ?: return "The Mini was eventually accounted for."
+            ?: return "Case remains suspicious."
 
-    val totalMinutes =
+    val durationMinutes =
         max(
             0L,
-            (
-                    recoveredAt -
-                            parking.parkedAtMillis
-                    ) / 60_000L
-        )
+            recoveredAt -
+                    parking.parkedAtMillis
+        ) / 60_000L
 
     return when {
-        totalMinutes < 20 ->
+
+        durationMinutes <= 2 ->
             "Suspiciously efficient."
 
-        totalMinutes < 120 ->
-            "Almost like you knew what you were doing."
+        durationMinutes <= 30 ->
+            "A surprisingly competent recovery."
 
-        totalMinutes < 360 ->
-            "The Mini had time to think about what happened."
+        durationMinutes <= 120 ->
+            "Eventually, the Mini was located."
 
         else ->
-            "You did remember eventually."
+            "An investigation of unnecessary length."
     }
 }
 
@@ -505,7 +658,9 @@ private fun parkingComment(
 )
 @Composable
 private fun HistoryScreenPreview() {
+
     WheresTheMiniTheme {
+
         HistoryScreen(
             parkingHistory = listOf(
                 ParkingSession(
@@ -516,9 +671,16 @@ private fun HistoryScreenPreview() {
                     parkingExpiry = "5:00 PM",
                     parkedAtMillis =
                         System.currentTimeMillis() -
-                                5_400_000L,
+                                120_000L,
+                    location = ParkingLocation(
+                        latitude = 37.42200,
+                        longitude = -122.08400,
+                        accuracyMeters = 5f
+                    ),
                     recoveredAtMillis =
-                        System.currentTimeMillis()
+                        System.currentTimeMillis(),
+                    reminderEnabled = true,
+                    photoPath = null
                 )
             ),
             onMiniClick = {},
