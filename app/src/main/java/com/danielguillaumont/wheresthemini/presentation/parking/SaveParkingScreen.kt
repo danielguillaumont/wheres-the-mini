@@ -2,7 +2,6 @@ package com.danielguillaumont.wheresthemini.presentation.parking
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -26,10 +25,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontStyle
@@ -47,26 +42,15 @@ import com.danielguillaumont.wheresthemini.ui.theme.WheresTheMiniTheme
 
 @Composable
 fun SaveParkingScreen(
+    formState: ParkingFormState,
+    onParkingLevelChange: (String) -> Unit,
+    onSpotNumberChange: (String) -> Unit,
+    onNoteChange: (String) -> Unit,
+    onParkingExpiryChange: (String) -> Unit,
     onBackClick: () -> Unit,
     onSaveClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var parkingLevel by rememberSaveable {
-        mutableStateOf("")
-    }
-
-    var spotNumber by rememberSaveable {
-        mutableStateOf("")
-    }
-
-    var note by rememberSaveable {
-        mutableStateOf("")
-    }
-
-    var parkingExpiry by rememberSaveable {
-        mutableStateOf("")
-    }
-
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = WarmCream
@@ -137,22 +121,11 @@ fun SaveParkingScreen(
             )
 
             ParkingTicket(
-                parkingLevel = parkingLevel,
-                onParkingLevelChange = {
-                    parkingLevel = it
-                },
-                spotNumber = spotNumber,
-                onSpotNumberChange = {
-                    spotNumber = it
-                },
-                note = note,
-                onNoteChange = {
-                    note = it
-                },
-                parkingExpiry = parkingExpiry,
-                onParkingExpiryChange = {
-                    parkingExpiry = it
-                }
+                formState = formState,
+                onParkingLevelChange = onParkingLevelChange,
+                onSpotNumberChange = onSpotNumberChange,
+                onNoteChange = onNoteChange,
+                onParkingExpiryChange = onParkingExpiryChange
             )
 
             Spacer(
@@ -195,13 +168,10 @@ fun SaveParkingScreen(
 
 @Composable
 private fun ParkingTicket(
-    parkingLevel: String,
+    formState: ParkingFormState,
     onParkingLevelChange: (String) -> Unit,
-    spotNumber: String,
     onSpotNumberChange: (String) -> Unit,
-    note: String,
     onNoteChange: (String) -> Unit,
-    parkingExpiry: String,
     onParkingExpiryChange: (String) -> Unit
 ) {
     Surface(
@@ -277,7 +247,7 @@ private fun ParkingTicket(
 
             ParkingTextField(
                 label = "FLOOR / LEVEL",
-                value = parkingLevel,
+                value = formState.parkingLevel,
                 onValueChange = onParkingLevelChange,
                 placeholder = "P3"
             )
@@ -288,7 +258,7 @@ private fun ParkingTicket(
 
             ParkingTextField(
                 label = "SPOT NUMBER",
-                value = spotNumber,
+                value = formState.spotNumber,
                 onValueChange = onSpotNumberChange,
                 placeholder = "127"
             )
@@ -299,7 +269,7 @@ private fun ParkingTicket(
 
             ParkingTextField(
                 label = "NOTE",
-                value = note,
+                value = formState.note,
                 onValueChange = onNoteChange,
                 placeholder = "Near the lift, beside the suspicious van"
             )
@@ -310,7 +280,7 @@ private fun ParkingTicket(
 
             ParkingTextField(
                 label = "PARKING EXPIRES",
-                value = parkingExpiry,
+                value = formState.parkingExpiry,
                 onValueChange = onParkingExpiryChange,
                 placeholder = "No expiry"
             )
@@ -441,6 +411,11 @@ private fun TicketDivider() {
 private fun SaveParkingScreenPreview() {
     WheresTheMiniTheme {
         SaveParkingScreen(
+            formState = ParkingFormState(),
+            onParkingLevelChange = {},
+            onSpotNumberChange = {},
+            onNoteChange = {},
+            onParkingExpiryChange = {},
             onBackClick = {},
             onSaveClick = {}
         )

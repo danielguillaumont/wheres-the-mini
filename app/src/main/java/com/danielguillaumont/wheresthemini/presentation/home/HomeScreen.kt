@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -33,6 +34,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.danielguillaumont.wheresthemini.domain.model.ParkingSession
 import com.danielguillaumont.wheresthemini.ui.theme.AsphaltGrey
 import com.danielguillaumont.wheresthemini.ui.theme.BonnetBlack
 import com.danielguillaumont.wheresthemini.ui.theme.ChromeGrey
@@ -42,11 +44,16 @@ import com.danielguillaumont.wheresthemini.ui.theme.TicketPaper
 import com.danielguillaumont.wheresthemini.ui.theme.WarmCream
 import com.danielguillaumont.wheresthemini.ui.theme.WindowBlue
 import com.danielguillaumont.wheresthemini.ui.theme.WheresTheMiniTheme
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 @Composable
 fun HomeScreen(
-    modifier: Modifier = Modifier,
-    onParkedHereClick: () -> Unit = {}
+    currentParking: ParkingSession? = null,
+    onParkedHereClick: () -> Unit = {},
+    onFoundItClick: () -> Unit = {},
+    modifier: Modifier = Modifier
 ) {
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -64,7 +71,9 @@ fun HomeScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
 
-            Spacer(modifier = Modifier.height(26.dp))
+            Spacer(
+                modifier = Modifier.height(26.dp)
+            )
 
             Text(
                 text = "WHERE'S THE MINI?",
@@ -81,11 +90,17 @@ fun HomeScreen(
                 modifier = Modifier.padding(top = 8.dp)
             )
 
-            Spacer(modifier = Modifier.height(18.dp))
+            Spacer(
+                modifier = Modifier.height(18.dp)
+            )
 
-            MiniHeroCard()
+            MiniHeroCard(
+                currentParking = currentParking
+            )
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(
+                modifier = Modifier.height(20.dp)
+            )
 
             Button(
                 onClick = onParkedHereClick,
@@ -99,13 +114,42 @@ fun HomeScreen(
                 )
             ) {
                 Text(
-                    text = "I PARKED HERE",
+                    text = if (currentParking == null) {
+                        "I PARKED HERE"
+                    } else {
+                        "UPDATE PARKING"
+                    },
                     style = MaterialTheme.typography.labelLarge
                 )
             }
 
+            if (currentParking != null) {
+
+                Spacer(
+                    modifier = Modifier.height(10.dp)
+                )
+
+                OutlinedButton(
+                    onClick = onFoundItClick,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Text(
+                        text = "I FOUND IT",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = BonnetBlack
+                    )
+                }
+            }
+
             Text(
-                text = "Try to remember roughly where first.",
+                text = if (currentParking == null) {
+                    "Try to remember roughly where first."
+                } else {
+                    "Remarkably, we have a record."
+                },
                 style = MaterialTheme.typography.bodyMedium,
                 fontStyle = FontStyle.Italic,
                 color = MutedGrey,
@@ -113,15 +157,21 @@ fun HomeScreen(
                 modifier = Modifier.padding(top = 10.dp)
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(
+                modifier = Modifier.height(24.dp)
+            )
 
-            LastIncidentCard()
+            ParkingRecordCard(
+                currentParking = currentParking
+            )
         }
     }
 }
 
 @Composable
-private fun MiniHeroCard() {
+private fun MiniHeroCard(
+    currentParking: ParkingSession?
+) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(28.dp),
@@ -150,19 +200,31 @@ private fun MiniHeroCard() {
                 MiniIllustration()
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(
+                modifier = Modifier.height(10.dp)
+            )
 
             Text(
-                text = "The Mini is currently\naccounted for.",
+                text = if (currentParking == null) {
+                    "The Mini is currently\naccounted for."
+                } else {
+                    "The Mini is parked.\nWe wrote it down."
+                },
                 style = MaterialTheme.typography.headlineMedium,
                 color = BonnetBlack,
                 textAlign = TextAlign.Center
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(
+                modifier = Modifier.height(8.dp)
+            )
 
             Text(
-                text = "A minor miracle.",
+                text = if (currentParking == null) {
+                    "A minor miracle."
+                } else {
+                    "This feels unusually responsible."
+                },
                 style = MaterialTheme.typography.bodyLarge,
                 fontStyle = FontStyle.Italic,
                 color = AsphaltGrey,
@@ -202,8 +264,14 @@ private fun MiniIllustration() {
 
         drawRoundRect(
             color = MiniCitron,
-            topLeft = Offset(carLeft, carTop),
-            size = Size(carWidth, carHeight)
+            topLeft = Offset(
+                carLeft,
+                carTop
+            ),
+            size = Size(
+                carWidth,
+                carHeight
+            )
         )
 
         drawRoundRect(
@@ -278,7 +346,8 @@ private fun MiniIllustration() {
             )
         )
 
-        val wheelRadius = canvasHeight * 0.13f
+        val wheelRadius =
+            canvasHeight * 0.13f
 
         drawCircle(
             color = BonnetBlack,
@@ -317,7 +386,9 @@ private fun MiniIllustration() {
         )
 
         drawRoundRect(
-            color = BonnetBlack.copy(alpha = 0.45f),
+            color = BonnetBlack.copy(
+                alpha = 0.45f
+            ),
             topLeft = Offset(
                 canvasWidth * 0.47f,
                 canvasHeight * 0.46f
@@ -326,58 +397,131 @@ private fun MiniIllustration() {
                 canvasWidth * 0.18f,
                 canvasHeight * 0.18f
             ),
-            style = Stroke(width = 2f)
+            style = Stroke(
+                width = 2f
+            )
         )
     }
 }
 
 @Composable
-private fun LastIncidentCard() {
+private fun ParkingRecordCard(
+    currentParking: ParkingSession?
+) {
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .border(
                 width = 1.dp,
-                color = BonnetBlack.copy(alpha = 0.18f),
+                color = BonnetBlack.copy(
+                    alpha = 0.18f
+                ),
                 shape = RoundedCornerShape(18.dp)
             ),
         shape = RoundedCornerShape(18.dp),
         color = TicketPaper
     ) {
+
         Column(
             modifier = Modifier.padding(18.dp)
         ) {
 
             Text(
-                text = "LAST INCIDENT",
+                text = if (currentParking == null) {
+                    "LAST INCIDENT"
+                } else {
+                    "CURRENT PARKING"
+                },
                 style = MaterialTheme.typography.labelMedium,
                 color = AsphaltGrey
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(
+                modifier = Modifier.height(12.dp)
+            )
 
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(1.dp)
-                    .background(BonnetBlack.copy(alpha = 0.12f))
+                    .background(
+                        BonnetBlack.copy(
+                            alpha = 0.12f
+                        )
+                    )
             )
 
-            Spacer(modifier = Modifier.height(14.dp))
-
-            Text(
-                text = "NO PREVIOUS DISASTERS",
-                style = MaterialTheme.typography.titleMedium,
-                color = BonnetBlack
+            Spacer(
+                modifier = Modifier.height(14.dp)
             )
 
-            Text(
-                text = "Give it time.",
-                style = MaterialTheme.typography.bodyMedium,
-                fontStyle = FontStyle.Italic,
-                color = MutedGrey,
-                modifier = Modifier.padding(top = 4.dp)
-            )
+            if (currentParking == null) {
+
+                Text(
+                    text = "NO PREVIOUS DISASTERS",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = BonnetBlack
+                )
+
+                Text(
+                    text = "Give it time.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontStyle = FontStyle.Italic,
+                    color = MutedGrey,
+                    modifier = Modifier.padding(
+                        top = 4.dp
+                    )
+                )
+
+            } else {
+
+                val locationText =
+                    buildLocationDescription(
+                        currentParking
+                    )
+
+                Text(
+                    text = locationText,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = BonnetBlack
+                )
+
+                Text(
+                    text = "Parked at ${
+                        formatParkingTime(
+                            currentParking.parkedAtMillis
+                        )
+                    }",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = AsphaltGrey,
+                    modifier = Modifier.padding(
+                        top = 6.dp
+                    )
+                )
+
+                if (currentParking.note.isNotBlank()) {
+                    Text(
+                        text = "“${currentParking.note}”",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontStyle = FontStyle.Italic,
+                        color = MutedGrey,
+                        modifier = Modifier.padding(
+                            top = 8.dp
+                        )
+                    )
+                }
+
+                if (currentParking.parkingExpiry.isNotBlank()) {
+                    Text(
+                        text = "EXPIRES: ${currentParking.parkingExpiry}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = AsphaltGrey,
+                        modifier = Modifier.padding(
+                            top = 10.dp
+                        )
+                    )
+                }
+            }
         }
     }
 }
@@ -433,15 +577,25 @@ private fun BottomNavigationItem(
             color = if (selected) {
                 MiniCitron
             } else {
-                WarmCream.copy(alpha = 0.65f)
+                WarmCream.copy(
+                    alpha = 0.65f
+                )
             }
         )
 
-        Spacer(modifier = Modifier.height(6.dp))
+        Spacer(
+            modifier = Modifier.height(6.dp)
+        )
 
         Box(
             modifier = Modifier
-                .width(if (selected) 30.dp else 6.dp)
+                .width(
+                    if (selected) {
+                        30.dp
+                    } else {
+                        6.dp
+                    }
+                )
                 .height(4.dp)
                 .background(
                     color = if (selected) {
@@ -455,13 +609,67 @@ private fun BottomNavigationItem(
     }
 }
 
+private fun buildLocationDescription(
+    parking: ParkingSession
+): String {
+
+    val level =
+        parking.parkingLevel.ifBlank {
+            "UNKNOWN LEVEL"
+        }
+
+    val spot =
+        parking.spotNumber.ifBlank {
+            "UNKNOWN SPOT"
+        }
+
+    return "$level · SPOT $spot"
+}
+
+private fun formatParkingTime(
+    parkedAtMillis: Long
+): String {
+
+    val formatter =
+        DateTimeFormatter.ofPattern(
+            "h:mm a"
+        )
+
+    return Instant
+        .ofEpochMilli(parkedAtMillis)
+        .atZone(
+            ZoneId.systemDefault()
+        )
+        .format(formatter)
+}
+
 @Preview(
     showBackground = true,
     showSystemUi = true
 )
 @Composable
-private fun HomeScreenPreview() {
+private fun HomeScreenEmptyPreview() {
     WheresTheMiniTheme {
         HomeScreen()
+    }
+}
+
+@Preview(
+    showBackground = true,
+    showSystemUi = true
+)
+@Composable
+private fun HomeScreenParkedPreview() {
+    WheresTheMiniTheme {
+        HomeScreen(
+            currentParking = ParkingSession(
+                id = 1,
+                parkingLevel = "P3",
+                spotNumber = "127",
+                note = "Beside the suspicious red car",
+                parkingExpiry = "4:30 PM",
+                parkedAtMillis = System.currentTimeMillis()
+            )
+        )
     }
 }
