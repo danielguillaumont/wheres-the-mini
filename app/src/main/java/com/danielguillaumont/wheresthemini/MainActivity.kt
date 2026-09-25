@@ -4,7 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import com.danielguillaumont.wheresthemini.presentation.home.HomeScreen
+import com.danielguillaumont.wheresthemini.presentation.navigation.AppNavigation
 import com.danielguillaumont.wheresthemini.ui.theme.WheresTheMiniTheme
 
 class MainActivity : ComponentActivity() {
@@ -16,7 +16,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             WheresTheMiniTheme {
-                HomeScreen()
+                AppNavigation()
             }
         }
     }
