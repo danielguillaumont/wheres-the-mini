@@ -80,8 +80,9 @@ private fun ParkingEntity.toDomain():
         parkingExpiry = parkingExpiry,
         parkedAtMillis = parkedAtMillis,
         location = savedLocation,
-        recoveredAtMillis =
-            recoveredAtMillis
+        recoveredAtMillis = recoveredAtMillis,
+        parkingExpiryMillis = parkingExpiryMillis,
+        reminderEnabled = reminderEnabled
     )
 }
 
@@ -102,6 +103,10 @@ private fun ParkingSession.toEntity(
             location?.accuracyMeters,
         isActive = isActive,
         recoveredAtMillis =
-            recoveredAtMillis
+            recoveredAtMillis,
+        parkingExpiryMillis =
+            parkingExpiryMillis,
+        reminderEnabled =
+            reminderEnabled
     )
 }

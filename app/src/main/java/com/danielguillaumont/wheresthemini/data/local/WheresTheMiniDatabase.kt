@@ -4,12 +4,14 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [
         ParkingEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class WheresTheMiniDatabase :
@@ -24,6 +26,32 @@ abstract class WheresTheMiniDatabase :
         private var INSTANCE:
                 WheresTheMiniDatabase? = null
 
+        private val MIGRATION_1_2 =
+            object : Migration(
+                1,
+                2
+            ) {
+
+                override fun migrate(
+                    database: SupportSQLiteDatabase
+                ) {
+
+                    database.execSQL(
+                        """
+                        ALTER TABLE parking_sessions
+                        ADD COLUMN parkingExpiryMillis INTEGER
+                        """.trimIndent()
+                    )
+
+                    database.execSQL(
+                        """
+                        ALTER TABLE parking_sessions
+                        ADD COLUMN reminderEnabled INTEGER NOT NULL DEFAULT 0
+                        """.trimIndent()
+                    )
+                }
+            }
+
         fun getDatabase(
             context: Context
         ): WheresTheMiniDatabase {
@@ -37,6 +65,9 @@ abstract class WheresTheMiniDatabase :
                             WheresTheMiniDatabase::class.java,
                             "wheres_the_mini.db"
                         )
+                            .addMigrations(
+                                MIGRATION_1_2
+                            )
                             .build()
 
                     INSTANCE = instance

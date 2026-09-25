@@ -29,5 +29,9 @@ data class ParkingEntity(
 
     val isActive: Boolean,
 
-    val recoveredAtMillis: Long?
+    val recoveredAtMillis: Long?,
+
+    val parkingExpiryMillis: Long?,
+
+    val reminderEnabled: Boolean
 )
