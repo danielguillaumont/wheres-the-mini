@@ -8,6 +8,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -19,6 +20,7 @@ import com.danielguillaumont.wheresthemini.data.notification.ParkingReminderSche
 import com.danielguillaumont.wheresthemini.data.repository.ParkingRepository
 import com.danielguillaumont.wheresthemini.presentation.history.HistoryScreen
 import com.danielguillaumont.wheresthemini.presentation.home.HomeScreen
+import com.danielguillaumont.wheresthemini.presentation.info.InfoScreen
 import com.danielguillaumont.wheresthemini.presentation.parking.ParkingViewModel
 import com.danielguillaumont.wheresthemini.presentation.parking.ParkingViewModelFactory
 import com.danielguillaumont.wheresthemini.presentation.parking.SaveParkingScreen
@@ -33,6 +35,9 @@ private object Routes {
 
     const val HISTORY =
         "history"
+
+    const val INFO =
+        "info"
 }
 
 @Composable
@@ -202,16 +207,23 @@ fun AppNavigation() {
 
                 onHistoryClick = {
 
-                    navController
-                        .navigate(
+                    navigateTopLevel(
+                        navController =
+                            navController,
+                        route =
                             Routes.HISTORY
-                        ) {
-                            launchSingleTop =
-                                true
-                        }
+                    )
                 },
 
-                onInfoClick = {}
+                onInfoClick = {
+
+                    navigateTopLevel(
+                        navController =
+                            navController,
+                        route =
+                            Routes.INFO
+                    )
+                }
             )
         }
 
@@ -321,25 +333,73 @@ fun AppNavigation() {
 
                 onMiniClick = {
 
-                    navController
-                        .navigate(
+                    navigateTopLevel(
+                        navController =
+                            navController,
+                        route =
                             Routes.HOME
-                        ) {
-
-                            popUpTo(
-                                Routes.HOME
-                            ) {
-                                inclusive =
-                                    false
-                            }
-
-                            launchSingleTop =
-                                true
-                        }
+                    )
                 },
 
-                onInfoClick = {}
+                onInfoClick = {
+
+                    navigateTopLevel(
+                        navController =
+                            navController,
+                        route =
+                            Routes.INFO
+                    )
+                }
+            )
+        }
+
+        composable(
+            route =
+                Routes.INFO
+        ) {
+
+            InfoScreen(
+                onMiniClick = {
+
+                    navigateTopLevel(
+                        navController =
+                            navController,
+                        route =
+                            Routes.HOME
+                    )
+                },
+
+                onHistoryClick = {
+
+                    navigateTopLevel(
+                        navController =
+                            navController,
+                        route =
+                            Routes.HISTORY
+                    )
+                }
             )
         }
     }
+}
+
+private fun navigateTopLevel(
+    navController: NavHostController,
+    route: String
+) {
+    navController
+        .navigate(
+            route
+        ) {
+
+            popUpTo(
+                Routes.HOME
+            ) {
+                inclusive =
+                    false
+            }
+
+            launchSingleTop =
+                true
+        }
 }
