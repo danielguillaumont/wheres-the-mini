@@ -32,14 +32,48 @@ class ParkingViewModel : ViewModel() {
     val uiState: StateFlow<ParkingUiState> =
         _uiState.asStateFlow()
 
+    fun beginNewParking() {
+        _uiState.value =
+            _uiState.value.copy(
+                form = ParkingFormState()
+            )
+    }
+
+    fun beginEditingCurrentParking() {
+        val currentParking =
+            _uiState.value.currentParking
+                ?: return
+
+        _uiState.value =
+            _uiState.value.copy(
+                form = ParkingFormState(
+                    parkingLevel =
+                        currentParking.parkingLevel,
+
+                    spotNumber =
+                        currentParking.spotNumber,
+
+                    note =
+                        currentParking.note,
+
+                    parkingExpiry =
+                        currentParking.parkingExpiry,
+
+                    location =
+                        currentParking.location
+                )
+            )
+    }
+
     fun updateParkingLevel(
         value: String
     ) {
         _uiState.value =
             _uiState.value.copy(
-                form = _uiState.value.form.copy(
-                    parkingLevel = value
-                )
+                form =
+                    _uiState.value.form.copy(
+                        parkingLevel = value
+                    )
             )
     }
 
@@ -48,9 +82,10 @@ class ParkingViewModel : ViewModel() {
     ) {
         _uiState.value =
             _uiState.value.copy(
-                form = _uiState.value.form.copy(
-                    spotNumber = value
-                )
+                form =
+                    _uiState.value.form.copy(
+                        spotNumber = value
+                    )
             )
     }
 
@@ -59,9 +94,10 @@ class ParkingViewModel : ViewModel() {
     ) {
         _uiState.value =
             _uiState.value.copy(
-                form = _uiState.value.form.copy(
-                    note = value
-                )
+                form =
+                    _uiState.value.form.copy(
+                        note = value
+                    )
             )
     }
 
@@ -70,19 +106,21 @@ class ParkingViewModel : ViewModel() {
     ) {
         _uiState.value =
             _uiState.value.copy(
-                form = _uiState.value.form.copy(
-                    parkingExpiry = value
-                )
+                form =
+                    _uiState.value.form.copy(
+                        parkingExpiry = value
+                    )
             )
     }
 
     fun beginLocationCapture() {
         _uiState.value =
             _uiState.value.copy(
-                form = _uiState.value.form.copy(
-                    isLocating = true,
-                    locationError = null
-                )
+                form =
+                    _uiState.value.form.copy(
+                        isLocating = true,
+                        locationError = null
+                    )
             )
     }
 
@@ -91,11 +129,12 @@ class ParkingViewModel : ViewModel() {
     ) {
         _uiState.value =
             _uiState.value.copy(
-                form = _uiState.value.form.copy(
-                    location = location,
-                    isLocating = false,
-                    locationError = null
-                )
+                form =
+                    _uiState.value.form.copy(
+                        location = location,
+                        isLocating = false,
+                        locationError = null
+                    )
             )
     }
 
@@ -104,10 +143,11 @@ class ParkingViewModel : ViewModel() {
     ) {
         _uiState.value =
             _uiState.value.copy(
-                form = _uiState.value.form.copy(
-                    isLocating = false,
-                    locationError = message
-                )
+                form =
+                    _uiState.value.form.copy(
+                        isLocating = false,
+                        locationError = message
+                    )
             )
     }
 
@@ -121,15 +161,33 @@ class ParkingViewModel : ViewModel() {
         val form =
             _uiState.value.form
 
+        val existingParking =
+            _uiState.value.currentParking
+
         val parkingSession =
             ParkingSession(
-                id = System.currentTimeMillis(),
-                parkingLevel = form.parkingLevel.trim(),
-                spotNumber = form.spotNumber.trim(),
-                note = form.note.trim(),
-                parkingExpiry = form.parkingExpiry.trim(),
-                parkedAtMillis = System.currentTimeMillis(),
-                location = form.location
+                id =
+                    existingParking?.id
+                        ?: System.currentTimeMillis(),
+
+                parkingLevel =
+                    form.parkingLevel.trim(),
+
+                spotNumber =
+                    form.spotNumber.trim(),
+
+                note =
+                    form.note.trim(),
+
+                parkingExpiry =
+                    form.parkingExpiry.trim(),
+
+                parkedAtMillis =
+                    existingParking?.parkedAtMillis
+                        ?: System.currentTimeMillis(),
+
+                location =
+                    form.location
             )
 
         _uiState.value =
@@ -141,8 +199,6 @@ class ParkingViewModel : ViewModel() {
 
     fun clearCurrentParking() {
         _uiState.value =
-            _uiState.value.copy(
-                currentParking = null
-            )
+            ParkingUiState()
     }
 }

@@ -31,11 +31,15 @@ fun AppNavigation(
 
     val locationClient =
         remember(context) {
-            FusedLocationClient(context)
+            FusedLocationClient(
+                context
+            )
         }
 
     val uiState by
-    parkingViewModel.uiState.collectAsState()
+    parkingViewModel
+        .uiState
+        .collectAsState()
 
     NavHost(
         navController = navController,
@@ -45,15 +49,31 @@ fun AppNavigation(
         composable(
             route = Routes.HOME
         ) {
+
             HomeScreen(
-                currentParking = uiState.currentParking,
+                currentParking =
+                    uiState.currentParking,
+
                 onParkedHereClick = {
+
+                    if (
+                        uiState.currentParking == null
+                    ) {
+                        parkingViewModel
+                            .beginNewParking()
+                    } else {
+                        parkingViewModel
+                            .beginEditingCurrentParking()
+                    }
+
                     navController.navigate(
                         Routes.SAVE_PARKING
                     )
                 },
+
                 onFoundItClick = {
-                    parkingViewModel.clearCurrentParking()
+                    parkingViewModel
+                        .clearCurrentParking()
                 }
             )
         }
@@ -61,8 +81,10 @@ fun AppNavigation(
         composable(
             route = Routes.SAVE_PARKING
         ) {
+
             SaveParkingScreen(
-                formState = uiState.form,
+                formState =
+                    uiState.form,
 
                 onParkingLevelChange =
                     parkingViewModel::updateParkingLevel,
@@ -78,39 +100,49 @@ fun AppNavigation(
 
                 onCaptureLocation = {
 
-                    parkingViewModel.beginLocationCapture()
+                    parkingViewModel
+                        .beginLocationCapture()
 
-                    locationClient.getCurrentLocation(
-                        onSuccess = { location ->
+                    locationClient
+                        .getCurrentLocation(
 
-                            parkingViewModel
-                                .setCapturedLocation(
-                                    location
-                                )
-                        },
+                            onSuccess = { location ->
 
-                        onError = { message ->
+                                parkingViewModel
+                                    .setCapturedLocation(
+                                        location
+                                    )
+                            },
 
-                            parkingViewModel
-                                .setLocationError(
-                                    message
-                                )
-                        }
-                    )
+                            onError = { message ->
+
+                                parkingViewModel
+                                    .setLocationError(
+                                        message
+                                    )
+                            }
+                        )
                 },
 
                 onLocationPermissionDenied = {
+
                     parkingViewModel
                         .setLocationPermissionDenied()
                 },
 
                 onBackClick = {
-                    navController.popBackStack()
+
+                    navController
+                        .popBackStack()
                 },
 
                 onSaveClick = {
-                    parkingViewModel.saveParking()
-                    navController.popBackStack()
+
+                    parkingViewModel
+                        .saveParking()
+
+                    navController
+                        .popBackStack()
                 }
             )
         }
