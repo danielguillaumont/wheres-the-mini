@@ -1,11 +1,15 @@
 package com.danielguillaumont.wheresthemini.presentation.parking
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.danielguillaumont.wheresthemini.data.repository.ParkingRepository
 import com.danielguillaumont.wheresthemini.domain.model.ParkingLocation
 import com.danielguillaumont.wheresthemini.domain.model.ParkingSession
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.launch
 
 data class ParkingFormState(
     val parkingLevel: String = "",
@@ -18,146 +22,233 @@ data class ParkingFormState(
 )
 
 data class ParkingUiState(
-    val form: ParkingFormState = ParkingFormState(),
-    val currentParking: ParkingSession? = null
+    val form: ParkingFormState =
+        ParkingFormState(),
+
+    val currentParking:
+    ParkingSession? = null,
+
+    val parkingHistory:
+    List<ParkingSession> =
+        emptyList()
 )
 
-class ParkingViewModel : ViewModel() {
+class ParkingViewModel(
+    private val repository:
+    ParkingRepository
+) : ViewModel() {
 
     private val _uiState =
         MutableStateFlow(
             ParkingUiState()
         )
 
-    val uiState: StateFlow<ParkingUiState> =
+    val uiState:
+            StateFlow<ParkingUiState> =
         _uiState.asStateFlow()
 
+    init {
+        observeParkingDatabase()
+    }
+
+    private fun observeParkingDatabase() {
+
+        viewModelScope.launch {
+
+            combine(
+                repository.activeParking,
+                repository.parkingHistory
+            ) { activeParking, history ->
+
+                activeParking to history
+
+            }.collect {
+                    (activeParking, history) ->
+
+                _uiState.value =
+                    _uiState.value.copy(
+                        currentParking =
+                            activeParking,
+
+                        parkingHistory =
+                            history
+                    )
+            }
+        }
+    }
+
     fun beginNewParking() {
+
         _uiState.value =
             _uiState.value.copy(
-                form = ParkingFormState()
+                form =
+                    ParkingFormState()
             )
     }
 
     fun beginEditingCurrentParking() {
+
         val currentParking =
             _uiState.value.currentParking
                 ?: return
 
         _uiState.value =
             _uiState.value.copy(
-                form = ParkingFormState(
-                    parkingLevel =
-                        currentParking.parkingLevel,
+                form =
+                    ParkingFormState(
+                        parkingLevel =
+                            currentParking
+                                .parkingLevel,
 
-                    spotNumber =
-                        currentParking.spotNumber,
+                        spotNumber =
+                            currentParking
+                                .spotNumber,
 
-                    note =
-                        currentParking.note,
+                        note =
+                            currentParking
+                                .note,
 
-                    parkingExpiry =
-                        currentParking.parkingExpiry,
+                        parkingExpiry =
+                            currentParking
+                                .parkingExpiry,
 
-                    location =
-                        currentParking.location
-                )
+                        location =
+                            currentParking
+                                .location
+                    )
             )
     }
 
     fun updateParkingLevel(
         value: String
     ) {
+
         _uiState.value =
             _uiState.value.copy(
                 form =
-                    _uiState.value.form.copy(
-                        parkingLevel = value
-                    )
+                    _uiState.value
+                        .form
+                        .copy(
+                            parkingLevel =
+                                value
+                        )
             )
     }
 
     fun updateSpotNumber(
         value: String
     ) {
+
         _uiState.value =
             _uiState.value.copy(
                 form =
-                    _uiState.value.form.copy(
-                        spotNumber = value
-                    )
+                    _uiState.value
+                        .form
+                        .copy(
+                            spotNumber =
+                                value
+                        )
             )
     }
 
     fun updateNote(
         value: String
     ) {
+
         _uiState.value =
             _uiState.value.copy(
                 form =
-                    _uiState.value.form.copy(
-                        note = value
-                    )
+                    _uiState.value
+                        .form
+                        .copy(
+                            note = value
+                        )
             )
     }
 
     fun updateParkingExpiry(
         value: String
     ) {
+
         _uiState.value =
             _uiState.value.copy(
                 form =
-                    _uiState.value.form.copy(
-                        parkingExpiry = value
-                    )
+                    _uiState.value
+                        .form
+                        .copy(
+                            parkingExpiry =
+                                value
+                        )
             )
     }
 
     fun beginLocationCapture() {
+
         _uiState.value =
             _uiState.value.copy(
                 form =
-                    _uiState.value.form.copy(
-                        isLocating = true,
-                        locationError = null
-                    )
+                    _uiState.value
+                        .form
+                        .copy(
+                            isLocating =
+                                true,
+
+                            locationError =
+                                null
+                        )
             )
     }
 
     fun setCapturedLocation(
         location: ParkingLocation
     ) {
+
         _uiState.value =
             _uiState.value.copy(
                 form =
-                    _uiState.value.form.copy(
-                        location = location,
-                        isLocating = false,
-                        locationError = null
-                    )
+                    _uiState.value
+                        .form
+                        .copy(
+                            location =
+                                location,
+
+                            isLocating =
+                                false,
+
+                            locationError =
+                                null
+                        )
             )
     }
 
     fun setLocationError(
         message: String
     ) {
+
         _uiState.value =
             _uiState.value.copy(
                 form =
-                    _uiState.value.form.copy(
-                        isLocating = false,
-                        locationError = message
-                    )
+                    _uiState.value
+                        .form
+                        .copy(
+                            isLocating =
+                                false,
+
+                            locationError =
+                                message
+                        )
             )
     }
 
     fun setLocationPermissionDenied() {
+
         setLocationError(
             "Location permission was denied. You can still save the parking details manually."
         )
     }
 
     fun saveParking() {
+
         val form =
             _uiState.value.form
 
@@ -168,23 +259,30 @@ class ParkingViewModel : ViewModel() {
             ParkingSession(
                 id =
                     existingParking?.id
-                        ?: System.currentTimeMillis(),
+                        ?: System
+                            .currentTimeMillis(),
 
                 parkingLevel =
-                    form.parkingLevel.trim(),
+                    form.parkingLevel
+                        .trim(),
 
                 spotNumber =
-                    form.spotNumber.trim(),
+                    form.spotNumber
+                        .trim(),
 
                 note =
-                    form.note.trim(),
+                    form.note
+                        .trim(),
 
                 parkingExpiry =
-                    form.parkingExpiry.trim(),
+                    form.parkingExpiry
+                        .trim(),
 
                 parkedAtMillis =
-                    existingParking?.parkedAtMillis
-                        ?: System.currentTimeMillis(),
+                    existingParking
+                        ?.parkedAtMillis
+                        ?: System
+                            .currentTimeMillis(),
 
                 location =
                     form.location
@@ -192,13 +290,42 @@ class ParkingViewModel : ViewModel() {
 
         _uiState.value =
             _uiState.value.copy(
-                currentParking = parkingSession,
-                form = ParkingFormState()
+                currentParking =
+                    parkingSession,
+
+                form =
+                    ParkingFormState()
             )
+
+        viewModelScope.launch {
+
+            repository.saveParking(
+                parkingSession
+            )
+        }
     }
 
     fun clearCurrentParking() {
+
+        val parkingId =
+            _uiState.value
+                .currentParking
+                ?.id
+                ?: return
+
         _uiState.value =
-            ParkingUiState()
+            _uiState.value.copy(
+                currentParking = null,
+                form =
+                    ParkingFormState()
+            )
+
+        viewModelScope.launch {
+
+            repository
+                .markParkingRecovered(
+                    parkingId
+                )
+        }
     }
 }

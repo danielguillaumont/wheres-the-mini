@@ -13,5 +13,6 @@ data class ParkingSession(
     val note: String,
     val parkingExpiry: String,
     val parkedAtMillis: Long,
-    val location: ParkingLocation? = null
+    val location: ParkingLocation? = null,
+    val recoveredAtMillis: Long? = null
 )

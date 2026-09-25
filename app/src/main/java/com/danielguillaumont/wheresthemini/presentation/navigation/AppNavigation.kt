@@ -9,28 +9,65 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.danielguillaumont.wheresthemini.data.local.WheresTheMiniDatabase
 import com.danielguillaumont.wheresthemini.data.location.FusedLocationClient
+import com.danielguillaumont.wheresthemini.data.repository.ParkingRepository
 import com.danielguillaumont.wheresthemini.presentation.home.HomeScreen
 import com.danielguillaumont.wheresthemini.presentation.parking.ParkingViewModel
+import com.danielguillaumont.wheresthemini.presentation.parking.ParkingViewModelFactory
 import com.danielguillaumont.wheresthemini.presentation.parking.SaveParkingScreen
 
 private object Routes {
     const val HOME = "home"
-    const val SAVE_PARKING = "save_parking"
+    const val SAVE_PARKING =
+        "save_parking"
 }
 
 @Composable
-fun AppNavigation(
-    parkingViewModel: ParkingViewModel = viewModel()
-) {
-    val navController =
-        rememberNavController()
+fun AppNavigation() {
 
     val context =
         LocalContext.current
 
+    val navController =
+        rememberNavController()
+
+    val database =
+        remember(context) {
+
+            WheresTheMiniDatabase
+                .getDatabase(
+                    context
+                )
+        }
+
+    val repository =
+        remember(database) {
+
+            ParkingRepository(
+                parkingDao =
+                    database.parkingDao()
+            )
+        }
+
+    val viewModelFactory =
+        remember(repository) {
+
+            ParkingViewModelFactory(
+                repository = repository
+            )
+        }
+
+    val parkingViewModel:
+            ParkingViewModel =
+        viewModel(
+            factory =
+                viewModelFactory
+        )
+
     val locationClient =
         remember(context) {
+
             FusedLocationClient(
                 context
             )
@@ -42,8 +79,11 @@ fun AppNavigation(
         .collectAsState()
 
     NavHost(
-        navController = navController,
-        startDestination = Routes.HOME
+        navController =
+            navController,
+
+        startDestination =
+            Routes.HOME
     ) {
 
         composable(
@@ -57,21 +97,29 @@ fun AppNavigation(
                 onParkedHereClick = {
 
                     if (
-                        uiState.currentParking == null
+                        uiState
+                            .currentParking ==
+                        null
                     ) {
+
                         parkingViewModel
                             .beginNewParking()
+
                     } else {
+
                         parkingViewModel
                             .beginEditingCurrentParking()
                     }
 
-                    navController.navigate(
-                        Routes.SAVE_PARKING
-                    )
+                    navController
+                        .navigate(
+                            Routes
+                                .SAVE_PARKING
+                        )
                 },
 
                 onFoundItClick = {
+
                     parkingViewModel
                         .clearCurrentParking()
                 }
@@ -79,7 +127,8 @@ fun AppNavigation(
         }
 
         composable(
-            route = Routes.SAVE_PARKING
+            route =
+                Routes.SAVE_PARKING
         ) {
 
             SaveParkingScreen(
@@ -87,16 +136,20 @@ fun AppNavigation(
                     uiState.form,
 
                 onParkingLevelChange =
-                    parkingViewModel::updateParkingLevel,
+                    parkingViewModel::
+                    updateParkingLevel,
 
                 onSpotNumberChange =
-                    parkingViewModel::updateSpotNumber,
+                    parkingViewModel::
+                    updateSpotNumber,
 
                 onNoteChange =
-                    parkingViewModel::updateNote,
+                    parkingViewModel::
+                    updateNote,
 
                 onParkingExpiryChange =
-                    parkingViewModel::updateParkingExpiry,
+                    parkingViewModel::
+                    updateParkingExpiry,
 
                 onCaptureLocation = {
 
@@ -106,7 +159,8 @@ fun AppNavigation(
                     locationClient
                         .getCurrentLocation(
 
-                            onSuccess = { location ->
+                            onSuccess = {
+                                    location ->
 
                                 parkingViewModel
                                     .setCapturedLocation(
@@ -114,7 +168,8 @@ fun AppNavigation(
                                     )
                             },
 
-                            onError = { message ->
+                            onError = {
+                                    message ->
 
                                 parkingViewModel
                                     .setLocationError(
