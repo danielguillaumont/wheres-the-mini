@@ -2,6 +2,7 @@ package com.danielguillaumont.wheresthemini.presentation.navigation
 
 import android.widget.Toast
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -13,6 +14,8 @@ import androidx.navigation.compose.rememberNavController
 import com.danielguillaumont.wheresthemini.data.local.WheresTheMiniDatabase
 import com.danielguillaumont.wheresthemini.data.location.FusedLocationClient
 import com.danielguillaumont.wheresthemini.data.navigation.MapNavigator
+import com.danielguillaumont.wheresthemini.data.notification.NotificationHelper
+import com.danielguillaumont.wheresthemini.data.notification.ParkingReminderScheduler
 import com.danielguillaumont.wheresthemini.data.repository.ParkingRepository
 import com.danielguillaumont.wheresthemini.presentation.history.HistoryScreen
 import com.danielguillaumont.wheresthemini.presentation.home.HomeScreen
@@ -21,6 +24,7 @@ import com.danielguillaumont.wheresthemini.presentation.parking.ParkingViewModel
 import com.danielguillaumont.wheresthemini.presentation.parking.SaveParkingScreen
 
 private object Routes {
+
     const val HOME =
         "home"
 
@@ -40,9 +44,15 @@ fun AppNavigation() {
     val navController =
         rememberNavController()
 
+    LaunchedEffect(Unit) {
+        NotificationHelper
+            .ensureNotificationChannel(
+                context.applicationContext
+            )
+    }
+
     val database =
         remember(context) {
-
             WheresTheMiniDatabase
                 .getDatabase(
                     context
@@ -51,19 +61,29 @@ fun AppNavigation() {
 
     val repository =
         remember(database) {
-
             ParkingRepository(
                 parkingDao =
                     database.parkingDao()
             )
         }
 
-    val viewModelFactory =
-        remember(repository) {
+    val reminderScheduler =
+        remember(context) {
+            ParkingReminderScheduler(
+                context
+            )
+        }
 
+    val viewModelFactory =
+        remember(
+            repository,
+            reminderScheduler
+        ) {
             ParkingViewModelFactory(
                 repository =
-                    repository
+                    repository,
+                reminderScheduler =
+                    reminderScheduler
             )
         }
 
@@ -76,7 +96,6 @@ fun AppNavigation() {
 
     val locationClient =
         remember(context) {
-
             FusedLocationClient(
                 context
             )
@@ -84,7 +103,6 @@ fun AppNavigation() {
 
     val mapNavigator =
         remember(context) {
-
             MapNavigator(
                 context.applicationContext
             )
@@ -98,7 +116,6 @@ fun AppNavigation() {
     NavHost(
         navController =
             navController,
-
         startDestination =
             Routes.HOME
     ) {
@@ -122,12 +139,9 @@ fun AppNavigation() {
                         uiState.currentParking ==
                         null
                     ) {
-
                         parkingViewModel
                             .beginNewParking()
-
                     } else {
-
                         parkingViewModel
                             .beginEditingCurrentParking()
                     }
@@ -192,7 +206,6 @@ fun AppNavigation() {
                         .navigate(
                             Routes.HISTORY
                         ) {
-
                             launchSingleTop =
                                 true
                         }
@@ -223,9 +236,21 @@ fun AppNavigation() {
                     parkingViewModel::
                     updateNote,
 
-                onParkingExpiryChange =
+                onParkingExpirySelected =
                     parkingViewModel::
-                    updateParkingExpiry,
+                    setParkingExpiry,
+
+                onClearParkingExpiry =
+                    parkingViewModel::
+                    clearParkingExpiry,
+
+                onReminderEnabledChange =
+                    parkingViewModel::
+                    setReminderEnabled,
+
+                onNotificationPermissionDenied =
+                    parkingViewModel::
+                    setNotificationPermissionDenied,
 
                 onCaptureLocation = {
 
@@ -234,7 +259,6 @@ fun AppNavigation() {
 
                     locationClient
                         .getCurrentLocation(
-
                             onSuccess = {
                                     location ->
 

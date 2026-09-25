@@ -2,6 +2,7 @@ package com.danielguillaumont.wheresthemini.presentation.parking
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.danielguillaumont.wheresthemini.data.notification.ParkingReminderScheduler
 import com.danielguillaumont.wheresthemini.data.repository.ParkingRepository
 import com.danielguillaumont.wheresthemini.domain.model.ParkingLocation
 import com.danielguillaumont.wheresthemini.domain.model.ParkingSession
@@ -10,12 +11,21 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
+import java.util.Locale
+
+private const val REMINDER_OFFSET_MILLIS =
+    15L * 60L * 1000L
 
 data class ParkingFormState(
     val parkingLevel: String = "",
     val spotNumber: String = "",
     val note: String = "",
     val parkingExpiry: String = "",
+    val parkingExpiryMillis: Long? = null,
+    val reminderEnabled: Boolean = false,
+    val reminderError: String? = null,
     val location: ParkingLocation? = null,
     val isLocating: Boolean = false,
     val locationError: String? = null
@@ -35,7 +45,10 @@ data class ParkingUiState(
 
 class ParkingViewModel(
     private val repository:
-    ParkingRepository
+    ParkingRepository,
+
+    private val reminderScheduler:
+    ParkingReminderScheduler
 ) : ViewModel() {
 
     private val _uiState =
@@ -52,9 +65,7 @@ class ParkingViewModel(
     }
 
     private fun observeParkingDatabase() {
-
         viewModelScope.launch {
-
             combine(
                 repository.activeParking,
                 repository.parkingHistory
@@ -78,7 +89,6 @@ class ParkingViewModel(
     }
 
     fun beginNewParking() {
-
         _uiState.value =
             _uiState.value.copy(
                 form =
@@ -87,9 +97,9 @@ class ParkingViewModel(
     }
 
     fun beginEditingCurrentParking() {
-
         val currentParking =
-            _uiState.value.currentParking
+            _uiState.value
+                .currentParking
                 ?: return
 
         _uiState.value =
@@ -112,6 +122,14 @@ class ParkingViewModel(
                             currentParking
                                 .parkingExpiry,
 
+                        parkingExpiryMillis =
+                            currentParking
+                                .parkingExpiryMillis,
+
+                        reminderEnabled =
+                            currentParking
+                                .reminderEnabled,
+
                         location =
                             currentParking
                                 .location
@@ -122,7 +140,6 @@ class ParkingViewModel(
     fun updateParkingLevel(
         value: String
     ) {
-
         _uiState.value =
             _uiState.value.copy(
                 form =
@@ -138,7 +155,6 @@ class ParkingViewModel(
     fun updateSpotNumber(
         value: String
     ) {
-
         _uiState.value =
             _uiState.value.copy(
                 form =
@@ -154,21 +170,56 @@ class ParkingViewModel(
     fun updateNote(
         value: String
     ) {
-
         _uiState.value =
             _uiState.value.copy(
                 form =
                     _uiState.value
                         .form
                         .copy(
-                            note = value
+                            note =
+                                value
                         )
             )
     }
 
-    fun updateParkingExpiry(
-        value: String
+    fun setParkingExpiry(
+        hour: Int,
+        minute: Int
     ) {
+        val now =
+            ZonedDateTime.now()
+
+        var expiry =
+            now
+                .withHour(
+                    hour
+                )
+                .withMinute(
+                    minute
+                )
+                .withSecond(
+                    0
+                )
+                .withNano(
+                    0
+                )
+
+        if (
+            !expiry.isAfter(
+                now
+            )
+        ) {
+            expiry =
+                expiry.plusDays(
+                    1
+                )
+        }
+
+        val formatter =
+            DateTimeFormatter.ofPattern(
+                "h:mm a",
+                Locale.US
+            )
 
         _uiState.value =
             _uiState.value.copy(
@@ -177,13 +228,87 @@ class ParkingViewModel(
                         .form
                         .copy(
                             parkingExpiry =
-                                value
+                                expiry.format(
+                                    formatter
+                                ),
+
+                            parkingExpiryMillis =
+                                expiry
+                                    .toInstant()
+                                    .toEpochMilli(),
+
+                            reminderError =
+                                null
+                        )
+            )
+    }
+
+    fun clearParkingExpiry() {
+        _uiState.value =
+            _uiState.value.copy(
+                form =
+                    _uiState.value
+                        .form
+                        .copy(
+                            parkingExpiry =
+                                "",
+
+                            parkingExpiryMillis =
+                                null,
+
+                            reminderEnabled =
+                                false,
+
+                            reminderError =
+                                null
+                        )
+            )
+    }
+
+    fun setReminderEnabled(
+        enabled: Boolean
+    ) {
+        val form =
+            _uiState.value.form
+
+        if (
+            enabled &&
+            form.parkingExpiryMillis ==
+            null
+        ) {
+            return
+        }
+
+        _uiState.value =
+            _uiState.value.copy(
+                form =
+                    form.copy(
+                        reminderEnabled =
+                            enabled,
+
+                        reminderError =
+                            null
+                    )
+            )
+    }
+
+    fun setNotificationPermissionDenied() {
+        _uiState.value =
+            _uiState.value.copy(
+                form =
+                    _uiState.value
+                        .form
+                        .copy(
+                            reminderEnabled =
+                                false,
+
+                            reminderError =
+                                "Notifications are disabled, so the reminder cannot be scheduled."
                         )
             )
     }
 
     fun beginLocationCapture() {
-
         _uiState.value =
             _uiState.value.copy(
                 form =
@@ -202,7 +327,6 @@ class ParkingViewModel(
     fun setCapturedLocation(
         location: ParkingLocation
     ) {
-
         _uiState.value =
             _uiState.value.copy(
                 form =
@@ -224,7 +348,6 @@ class ParkingViewModel(
     fun setLocationError(
         message: String
     ) {
-
         _uiState.value =
             _uiState.value.copy(
                 form =
@@ -241,19 +364,18 @@ class ParkingViewModel(
     }
 
     fun setLocationPermissionDenied() {
-
         setLocationError(
             "Location permission was denied. You can still save the parking details manually."
         )
     }
 
     fun saveParking() {
-
         val form =
             _uiState.value.form
 
         val existingParking =
-            _uiState.value.currentParking
+            _uiState.value
+                .currentParking
 
         val parkingSession =
             ParkingSession(
@@ -285,7 +407,13 @@ class ParkingViewModel(
                             .currentTimeMillis(),
 
                 location =
-                    form.location
+                    form.location,
+
+                parkingExpiryMillis =
+                    form.parkingExpiryMillis,
+
+                reminderEnabled =
+                    form.reminderEnabled
             )
 
         _uiState.value =
@@ -298,30 +426,81 @@ class ParkingViewModel(
             )
 
         viewModelScope.launch {
-
             repository.saveParking(
                 parkingSession
             )
+
+            reminderScheduler
+                .cancelReminder(
+                    parkingSession.id
+                )
+
+            val expiryMillis =
+                parkingSession
+                    .parkingExpiryMillis
+
+            if (
+                parkingSession
+                    .reminderEnabled &&
+                expiryMillis != null
+            ) {
+                val normalReminderTime =
+                    expiryMillis -
+                            REMINDER_OFFSET_MILLIS
+
+                val earliestAllowedTime =
+                    System
+                        .currentTimeMillis() +
+                            1_000L
+
+                val reminderTime =
+                    maxOf(
+                        normalReminderTime,
+                        earliestAllowedTime
+                    )
+
+                reminderScheduler
+                    .scheduleReminder(
+                        parkingId =
+                            parkingSession.id,
+
+                        reminderAtMillis =
+                            reminderTime,
+
+                        parkingLevel =
+                            parkingSession
+                                .parkingLevel,
+
+                        spotNumber =
+                            parkingSession
+                                .spotNumber
+                    )
+            }
         }
     }
 
     fun clearCurrentParking() {
-
         val parkingId =
             _uiState.value
                 .currentParking
                 ?.id
                 ?: return
 
+        reminderScheduler
+            .cancelReminder(
+                parkingId
+            )
+
         _uiState.value =
             _uiState.value.copy(
-                currentParking = null,
+                currentParking =
+                    null,
+
                 form =
                     ParkingFormState()
             )
 
         viewModelScope.launch {
-
             repository
                 .markParkingRecovered(
                     parkingId

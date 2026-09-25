@@ -1,7 +1,9 @@
 package com.danielguillaumont.wheresthemini.presentation.parking
 
 import android.Manifest
+import android.app.TimePickerDialog
 import android.content.pm.PackageManager
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -26,6 +28,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -46,6 +49,9 @@ import com.danielguillaumont.wheresthemini.ui.theme.MutedGrey
 import com.danielguillaumont.wheresthemini.ui.theme.TicketPaper
 import com.danielguillaumont.wheresthemini.ui.theme.WarmCream
 import com.danielguillaumont.wheresthemini.ui.theme.WheresTheMiniTheme
+import java.time.Instant
+import java.time.ZoneId
+import java.time.ZonedDateTime
 import java.util.Locale
 import kotlin.math.roundToInt
 
@@ -55,7 +61,10 @@ fun SaveParkingScreen(
     onParkingLevelChange: (String) -> Unit,
     onSpotNumberChange: (String) -> Unit,
     onNoteChange: (String) -> Unit,
-    onParkingExpiryChange: (String) -> Unit,
+    onParkingExpirySelected: (Int, Int) -> Unit,
+    onClearParkingExpiry: () -> Unit,
+    onReminderEnabledChange: (Boolean) -> Unit,
+    onNotificationPermissionDenied: () -> Unit,
     onCaptureLocation: () -> Unit,
     onLocationPermissionDenied: () -> Unit,
     onBackClick: () -> Unit,
@@ -74,12 +83,14 @@ fun SaveParkingScreen(
 
             val fineLocationGranted =
                 permissions[
-                    Manifest.permission.ACCESS_FINE_LOCATION
+                    Manifest.permission
+                        .ACCESS_FINE_LOCATION
                 ] == true
 
             val coarseLocationGranted =
                 permissions[
-                    Manifest.permission.ACCESS_COARSE_LOCATION
+                    Manifest.permission
+                        .ACCESS_COARSE_LOCATION
                 ] == true
 
             if (
@@ -92,47 +103,131 @@ fun SaveParkingScreen(
             }
         }
 
-    fun hasLocationPermission(): Boolean {
+    val notificationPermissionLauncher =
+        rememberLauncherForActivityResult(
+            contract =
+                ActivityResultContracts
+                    .RequestPermission()
+        ) { granted ->
+
+            if (granted) {
+                onReminderEnabledChange(
+                    true
+                )
+            } else {
+                onNotificationPermissionDenied()
+            }
+        }
+
+    fun hasLocationPermission():
+            Boolean {
 
         val fineLocationGranted =
             ContextCompat.checkSelfPermission(
                 context,
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED
+                Manifest.permission
+                    .ACCESS_FINE_LOCATION
+            ) ==
+                    PackageManager
+                        .PERMISSION_GRANTED
 
         val coarseLocationGranted =
             ContextCompat.checkSelfPermission(
                 context,
-                Manifest.permission.ACCESS_COARSE_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED
+                Manifest.permission
+                    .ACCESS_COARSE_LOCATION
+            ) ==
+                    PackageManager
+                        .PERMISSION_GRANTED
 
         return fineLocationGranted ||
                 coarseLocationGranted
     }
 
     fun requestCurrentLocation() {
-
-        if (hasLocationPermission()) {
+        if (
+            hasLocationPermission()
+        ) {
             onCaptureLocation()
         } else {
-            locationPermissionLauncher.launch(
-                arrayOf(
-                    Manifest.permission.ACCESS_FINE_LOCATION,
-                    Manifest.permission.ACCESS_COARSE_LOCATION
+            locationPermissionLauncher
+                .launch(
+                    arrayOf(
+                        Manifest.permission
+                            .ACCESS_FINE_LOCATION,
+
+                        Manifest.permission
+                            .ACCESS_COARSE_LOCATION
+                    )
                 )
+        }
+    }
+
+    fun requestReminderChange(
+        enabled: Boolean
+    ) {
+        if (!enabled) {
+            onReminderEnabledChange(
+                false
             )
+
+            return
+        }
+
+        if (
+            formState
+                .parkingExpiryMillis ==
+            null
+        ) {
+            return
+        }
+
+        if (
+            Build.VERSION.SDK_INT <
+            Build.VERSION_CODES.TIRAMISU
+        ) {
+            onReminderEnabledChange(
+                true
+            )
+
+            return
+        }
+
+        val permissionGranted =
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission
+                    .POST_NOTIFICATIONS
+            ) ==
+                    PackageManager
+                        .PERMISSION_GRANTED
+
+        if (permissionGranted) {
+            onReminderEnabledChange(
+                true
+            )
+        } else {
+            notificationPermissionLauncher
+                .launch(
+                    Manifest.permission
+                        .POST_NOTIFICATIONS
+                )
         }
     }
 
     Scaffold(
-        modifier = modifier.fillMaxSize(),
-        containerColor = WarmCream
+        modifier =
+            modifier.fillMaxSize(),
+        containerColor =
+            WarmCream
     ) { innerPadding ->
 
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                .padding(
+                    innerPadding
+                )
                 .statusBarsPadding()
                 .verticalScroll(
                     rememberScrollState()
@@ -151,36 +246,45 @@ fun SaveParkingScreen(
             ) {
 
                 TextButton(
-                    onClick = onBackClick
+                    onClick =
+                        onBackClick
                 ) {
                     Text(
-                        text = "← BACK",
+                        text =
+                            "← BACK",
                         style =
                             MaterialTheme
                                 .typography
                                 .labelMedium,
-                        color = BonnetBlack
+                        color =
+                            BonnetBlack
                     )
                 }
 
                 Spacer(
                     modifier =
-                        Modifier.weight(1f)
+                        Modifier.weight(
+                            1f
+                        )
                 )
 
                 Text(
-                    text = "INCIDENT #001",
+                    text =
+                        "INCIDENT #001",
                     style =
                         MaterialTheme
                             .typography
                             .labelMedium,
-                    color = AsphaltGrey
+                    color =
+                        AsphaltGrey
                 )
             }
 
             Spacer(
                 modifier =
-                    Modifier.height(12.dp)
+                    Modifier.height(
+                        12.dp
+                    )
             )
 
             Text(
@@ -190,7 +294,8 @@ fun SaveParkingScreen(
                     MaterialTheme
                         .typography
                         .displayLarge,
-                color = BonnetBlack,
+                color =
+                    BonnetBlack,
                 textAlign =
                     TextAlign.Center,
                 modifier =
@@ -204,7 +309,8 @@ fun SaveParkingScreen(
                     MaterialTheme
                         .typography
                         .labelMedium,
-                color = AsphaltGrey,
+                color =
+                    AsphaltGrey,
                 textAlign =
                     TextAlign.Center,
                 modifier =
@@ -217,11 +323,14 @@ fun SaveParkingScreen(
 
             Spacer(
                 modifier =
-                    Modifier.height(22.dp)
+                    Modifier.height(
+                        22.dp
+                    )
             )
 
             ParkingTicket(
-                formState = formState,
+                formState =
+                    formState,
 
                 onParkingLevelChange =
                     onParkingLevelChange,
@@ -232,8 +341,14 @@ fun SaveParkingScreen(
                 onNoteChange =
                     onNoteChange,
 
-                onParkingExpiryChange =
-                    onParkingExpiryChange,
+                onParkingExpirySelected =
+                    onParkingExpirySelected,
+
+                onClearParkingExpiry =
+                    onClearParkingExpiry,
+
+                onReminderChange =
+                    ::requestReminderChange,
 
                 onCaptureLocation =
                     ::requestCurrentLocation
@@ -241,15 +356,20 @@ fun SaveParkingScreen(
 
             Spacer(
                 modifier =
-                    Modifier.height(18.dp)
+                    Modifier.height(
+                        18.dp
+                    )
             )
 
             Button(
-                onClick = onSaveClick,
+                onClick =
+                    onSaveClick,
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .height(62.dp),
+                        .height(
+                            62.dp
+                        ),
                 shape =
                     RoundedCornerShape(
                         18.dp
@@ -263,7 +383,6 @@ fun SaveParkingScreen(
                                 BonnetBlack
                         )
             ) {
-
                 Text(
                     text =
                         "SAVE THE MINI",
@@ -283,7 +402,8 @@ fun SaveParkingScreen(
                         .bodyMedium,
                 fontStyle =
                     FontStyle.Italic,
-                color = MutedGrey,
+                color =
+                    MutedGrey,
                 textAlign =
                     TextAlign.Center,
                 modifier =
@@ -304,7 +424,9 @@ private fun ParkingTicket(
     onParkingLevelChange: (String) -> Unit,
     onSpotNumberChange: (String) -> Unit,
     onNoteChange: (String) -> Unit,
-    onParkingExpiryChange: (String) -> Unit,
+    onParkingExpirySelected: (Int, Int) -> Unit,
+    onClearParkingExpiry: () -> Unit,
+    onReminderChange: (Boolean) -> Unit,
     onCaptureLocation: () -> Unit
 ) {
     Surface(
@@ -312,7 +434,8 @@ private fun ParkingTicket(
             Modifier
                 .fillMaxWidth()
                 .border(
-                    width = 1.dp,
+                    width =
+                        1.dp,
                     color =
                         BonnetBlack.copy(
                             alpha = 0.18f
@@ -326,13 +449,17 @@ private fun ParkingTicket(
             RoundedCornerShape(
                 22.dp
             ),
-        color = TicketPaper,
-        shadowElevation = 3.dp
+        color =
+            TicketPaper,
+        shadowElevation =
+            3.dp
     ) {
 
         Column(
             modifier =
-                Modifier.padding(20.dp)
+                Modifier.padding(
+                    20.dp
+                )
         ) {
 
             Text(
@@ -342,19 +469,24 @@ private fun ParkingTicket(
                     MaterialTheme
                         .typography
                         .labelMedium,
-                color = AsphaltGrey
+                color =
+                    AsphaltGrey
             )
 
             Spacer(
                 modifier =
-                    Modifier.height(12.dp)
+                    Modifier.height(
+                        12.dp
+                    )
             )
 
             TicketDivider()
 
             Spacer(
                 modifier =
-                    Modifier.height(18.dp)
+                    Modifier.height(
+                        18.dp
+                    )
             )
 
             Text(
@@ -364,12 +496,15 @@ private fun ParkingTicket(
                     MaterialTheme
                         .typography
                         .labelMedium,
-                color = AsphaltGrey
+                color =
+                    AsphaltGrey
             )
 
             Spacer(
                 modifier =
-                    Modifier.height(8.dp)
+                    Modifier.height(
+                        8.dp
+                    )
             )
 
             LocationCard(
@@ -388,14 +523,17 @@ private fun ParkingTicket(
 
             Spacer(
                 modifier =
-                    Modifier.height(20.dp)
+                    Modifier.height(
+                        20.dp
+                    )
             )
 
             ParkingTextField(
                 label =
                     "FLOOR / LEVEL",
                 value =
-                    formState.parkingLevel,
+                    formState
+                        .parkingLevel,
                 onValueChange =
                     onParkingLevelChange,
                 placeholder =
@@ -404,14 +542,17 @@ private fun ParkingTicket(
 
             Spacer(
                 modifier =
-                    Modifier.height(16.dp)
+                    Modifier.height(
+                        16.dp
+                    )
             )
 
             ParkingTextField(
                 label =
                     "SPOT NUMBER",
                 value =
-                    formState.spotNumber,
+                    formState
+                        .spotNumber,
                 onValueChange =
                     onSpotNumberChange,
                 placeholder =
@@ -420,11 +561,14 @@ private fun ParkingTicket(
 
             Spacer(
                 modifier =
-                    Modifier.height(16.dp)
+                    Modifier.height(
+                        16.dp
+                    )
             )
 
             ParkingTextField(
-                label = "NOTE",
+                label =
+                    "NOTE",
                 value =
                     formState.note,
                 onValueChange =
@@ -435,23 +579,47 @@ private fun ParkingTicket(
 
             Spacer(
                 modifier =
-                    Modifier.height(16.dp)
+                    Modifier.height(
+                        16.dp
+                    )
             )
 
-            ParkingTextField(
-                label =
-                    "PARKING EXPIRES",
-                value =
-                    formState.parkingExpiry,
-                onValueChange =
-                    onParkingExpiryChange,
-                placeholder =
-                    "No expiry"
+            ParkingExpirySelector(
+                expiryText =
+                    formState
+                        .parkingExpiry,
+
+                expiryMillis =
+                    formState
+                        .parkingExpiryMillis,
+
+                onParkingExpirySelected =
+                    onParkingExpirySelected,
+
+                onClearParkingExpiry =
+                    onClearParkingExpiry
             )
 
             Spacer(
                 modifier =
-                    Modifier.height(20.dp)
+                    Modifier.height(
+                        16.dp
+                    )
+            )
+
+            ParkingReminderCard(
+                formState =
+                    formState,
+
+                onReminderChange =
+                    onReminderChange
+            )
+
+            Spacer(
+                modifier =
+                    Modifier.height(
+                        20.dp
+                    )
             )
 
             Text(
@@ -461,12 +629,15 @@ private fun ParkingTicket(
                     MaterialTheme
                         .typography
                         .labelMedium,
-                color = AsphaltGrey
+                color =
+                    AsphaltGrey
             )
 
             Spacer(
                 modifier =
-                    Modifier.height(8.dp)
+                    Modifier.height(
+                        8.dp
+                    )
             )
 
             OutlinedButton(
@@ -474,7 +645,9 @@ private fun ParkingTicket(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .height(54.dp),
+                        .height(
+                            54.dp
+                        ),
                 shape =
                     RoundedCornerShape(
                         14.dp
@@ -486,7 +659,6 @@ private fun ParkingTicket(
                                 BonnetBlack
                         )
             ) {
-
                 Text(
                     text =
                         "ADD PARKING PHOTO",
@@ -506,7 +678,8 @@ private fun ParkingTicket(
                         .bodyMedium,
                 fontStyle =
                     FontStyle.Italic,
-                color = MutedGrey,
+                color =
+                    MutedGrey,
                 modifier =
                     Modifier.padding(
                         top = 6.dp
@@ -515,7 +688,9 @@ private fun ParkingTicket(
 
             Spacer(
                 modifier =
-                    Modifier.height(18.dp)
+                    Modifier.height(
+                        18.dp
+                    )
             )
 
             Box(
@@ -524,19 +699,18 @@ private fun ParkingTicket(
                         .fillMaxWidth()
                         .background(
                             color =
-                                BritishRed
-                                    .copy(
-                                        alpha =
-                                            0.08f
-                                    ),
+                                BritishRed.copy(
+                                    alpha = 0.08f
+                                ),
                             shape =
                                 RoundedCornerShape(
                                     12.dp
                                 )
                         )
-                        .padding(12.dp)
+                        .padding(
+                            12.dp
+                        )
             ) {
-
                 Text(
                     text =
                         "IMPORTANT: Remembering where you parked is still encouraged.",
@@ -553,11 +727,298 @@ private fun ParkingTicket(
 }
 
 @Composable
+private fun ParkingExpirySelector(
+    expiryText: String,
+    expiryMillis: Long?,
+    onParkingExpirySelected: (Int, Int) -> Unit,
+    onClearParkingExpiry: () -> Unit
+) {
+    val context =
+        LocalContext.current
+
+    fun showTimePicker() {
+        val initialDateTime =
+            expiryMillis?.let {
+                    millis ->
+
+                Instant
+                    .ofEpochMilli(
+                        millis
+                    )
+                    .atZone(
+                        ZoneId
+                            .systemDefault()
+                    )
+
+            } ?: ZonedDateTime
+                .now()
+                .plusMinutes(
+                    30
+                )
+
+        TimePickerDialog(
+            context,
+            {
+                    _,
+                    hour,
+                    minute ->
+
+                onParkingExpirySelected(
+                    hour,
+                    minute
+                )
+            },
+            initialDateTime.hour,
+            initialDateTime.minute,
+            false
+        ).show()
+    }
+
+    Column {
+
+        Text(
+            text =
+                "PARKING EXPIRES",
+            style =
+                MaterialTheme
+                    .typography
+                    .labelMedium,
+            color =
+                AsphaltGrey
+        )
+
+        Spacer(
+            modifier =
+                Modifier.height(
+                    7.dp
+                )
+        )
+
+        OutlinedButton(
+            onClick =
+                ::showTimePicker,
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .height(
+                        56.dp
+                    ),
+            shape =
+                RoundedCornerShape(
+                    14.dp
+                ),
+            colors =
+                ButtonDefaults
+                    .outlinedButtonColors(
+                        contentColor =
+                            BonnetBlack
+                    )
+        ) {
+            Text(
+                text =
+                    if (
+                        expiryText
+                            .isBlank()
+                    ) {
+                        "SELECT EXPIRY TIME"
+                    } else {
+                        expiryText
+                    },
+                style =
+                    MaterialTheme
+                        .typography
+                        .labelLarge
+            )
+        }
+
+        if (
+            expiryText.isNotBlank()
+        ) {
+            TextButton(
+                onClick =
+                    onClearParkingExpiry,
+                modifier =
+                    Modifier.align(
+                        Alignment.End
+                    )
+            ) {
+                Text(
+                    text =
+                        "REMOVE EXPIRY",
+                    style =
+                        MaterialTheme
+                            .typography
+                            .labelMedium,
+                    color =
+                        MutedGrey
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ParkingReminderCard(
+    formState:
+    ParkingFormState,
+    onReminderChange:
+        (Boolean) -> Unit
+) {
+    val hasRealExpiry =
+        formState
+            .parkingExpiryMillis !=
+                null
+
+    Surface(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .border(
+                    width =
+                        1.dp,
+                    color =
+                        BonnetBlack.copy(
+                            alpha = 0.14f
+                        ),
+                    shape =
+                        RoundedCornerShape(
+                            14.dp
+                        )
+                ),
+        shape =
+            RoundedCornerShape(
+                14.dp
+            ),
+        color =
+            WarmCream.copy(
+                alpha = 0.45f
+            )
+    ) {
+
+        Column(
+            modifier =
+                Modifier.padding(
+                    14.dp
+                )
+        ) {
+
+            Row(
+                modifier =
+                    Modifier.fillMaxWidth(),
+                verticalAlignment =
+                    Alignment.CenterVertically
+            ) {
+
+                Column(
+                    modifier =
+                        Modifier.weight(
+                            1f
+                        )
+                ) {
+
+                    Text(
+                        text =
+                            "PARKING REMINDER",
+                        style =
+                            MaterialTheme
+                                .typography
+                                .labelMedium,
+                        color =
+                            BonnetBlack
+                    )
+
+                    Text(
+                        text =
+                            if (
+                                hasRealExpiry
+                            ) {
+                                "Remind me around 15 minutes before."
+                            } else {
+                                "Choose an expiry time first."
+                            },
+                        style =
+                            MaterialTheme
+                                .typography
+                                .bodyMedium,
+                        color =
+                            MutedGrey,
+                        modifier =
+                            Modifier.padding(
+                                top = 3.dp
+                            )
+                    )
+                }
+
+                Switch(
+                    checked =
+                        formState
+                            .reminderEnabled,
+                    onCheckedChange =
+                        onReminderChange,
+                    enabled =
+                        hasRealExpiry
+                )
+            }
+
+            if (
+                formState
+                    .reminderError !=
+                null
+            ) {
+                Text(
+                    text =
+                        formState
+                            .reminderError,
+                    style =
+                        MaterialTheme
+                            .typography
+                            .bodyMedium,
+                    color =
+                        BritishRed,
+                    modifier =
+                        Modifier.padding(
+                            top = 8.dp
+                        )
+                )
+            }
+
+            if (
+                formState
+                    .parkingExpiry
+                    .isNotBlank() &&
+                !hasRealExpiry
+            ) {
+                Text(
+                    text =
+                        "This is an older saved expiry. Select the time again to enable reminders.",
+                    style =
+                        MaterialTheme
+                            .typography
+                            .bodyMedium,
+                    fontStyle =
+                        FontStyle.Italic,
+                    color =
+                        MutedGrey,
+                    modifier =
+                        Modifier.padding(
+                            top = 8.dp
+                        )
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun LocationCard(
-    location: ParkingLocation?,
-    isLocating: Boolean,
-    locationError: String?,
-    onCaptureLocation: () -> Unit
+    location:
+    ParkingLocation?,
+    isLocating:
+    Boolean,
+    locationError:
+    String?,
+    onCaptureLocation:
+        () -> Unit
 ) {
     Surface(
         modifier =
@@ -566,12 +1027,15 @@ private fun LocationCard(
             RoundedCornerShape(
                 14.dp
             ),
-        color = BonnetBlack
+        color =
+            BonnetBlack
     ) {
 
         Column(
             modifier =
-                Modifier.padding(14.dp)
+                Modifier.padding(
+                    14.dp
+                )
         ) {
 
             when {
@@ -670,7 +1134,6 @@ private fun LocationCard(
                                         MiniCitron
                                 )
                     ) {
-
                         Text(
                             text =
                                 "CAPTURE AGAIN",
@@ -705,11 +1168,11 @@ private fun LocationCard(
                                 .bodyMedium,
                         color =
                             if (
-                                locationError == null
+                                locationError ==
+                                null
                             ) {
                                 WarmCream.copy(
-                                    alpha =
-                                        0.78f
+                                    alpha = 0.78f
                                 )
                             } else {
                                 BritishRed
@@ -738,7 +1201,6 @@ private fun LocationCard(
                                         BonnetBlack
                                 )
                     ) {
-
                         Text(
                             text =
                                 "CAPTURE MY LOCATION",
@@ -758,43 +1220,51 @@ private fun LocationCard(
 private fun ParkingTextField(
     label: String,
     value: String,
-    onValueChange: (String) -> Unit,
+    onValueChange:
+        (String) -> Unit,
     placeholder: String
 ) {
     Column {
 
         Text(
-            text = label,
+            text =
+                label,
             style =
                 MaterialTheme
                     .typography
                     .labelMedium,
-            color = AsphaltGrey
+            color =
+                AsphaltGrey
         )
 
         Spacer(
             modifier =
-                Modifier.height(7.dp)
+                Modifier.height(
+                    7.dp
+                )
         )
 
         OutlinedTextField(
-            value = value,
+            value =
+                value,
             onValueChange =
                 onValueChange,
             modifier =
                 Modifier.fillMaxWidth(),
             placeholder = {
-
                 Text(
-                    text = placeholder,
-                    color = MutedGrey
+                    text =
+                        placeholder,
+                    color =
+                        MutedGrey
                 )
             },
             singleLine =
                 label != "NOTE",
             minLines =
                 if (
-                    label == "NOTE"
+                    label ==
+                    "NOTE"
                 ) {
                     3
                 } else {
@@ -844,7 +1314,9 @@ private fun TicketDivider() {
         modifier =
             Modifier
                 .fillMaxWidth()
-                .height(1.dp)
+                .height(
+                    1.dp
+                )
                 .background(
                     BonnetBlack.copy(
                         alpha = 0.13f
@@ -854,8 +1326,10 @@ private fun TicketDivider() {
 }
 
 private fun formatCoordinates(
-    location: ParkingLocation
+    location:
+    ParkingLocation
 ): String {
+
     return String.format(
         Locale.US,
         "%.5f, %.5f",
@@ -870,18 +1344,35 @@ private fun formatCoordinates(
 )
 @Composable
 private fun SaveParkingScreenPreview() {
+
     WheresTheMiniTheme {
 
         SaveParkingScreen(
             formState =
                 ParkingFormState(),
+
             onParkingLevelChange = {},
+
             onSpotNumberChange = {},
+
             onNoteChange = {},
-            onParkingExpiryChange = {},
+
+            onParkingExpirySelected = {
+                    _, _ ->
+            },
+
+            onClearParkingExpiry = {},
+
+            onReminderEnabledChange = {},
+
+            onNotificationPermissionDenied = {},
+
             onCaptureLocation = {},
+
             onLocationPermissionDenied = {},
+
             onBackClick = {},
+
             onSaveClick = {}
         )
     }
