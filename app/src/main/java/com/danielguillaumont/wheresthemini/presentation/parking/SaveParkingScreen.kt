@@ -3,9 +3,11 @@ package com.danielguillaumont.wheresthemini.presentation.parking
 import android.Manifest
 import android.app.TimePickerDialog
 import android.content.pm.PackageManager
+import android.graphics.BitmapFactory
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -32,14 +34,24 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import com.danielguillaumont.wheresthemini.data.photo.ParkingPhotoManager
+import com.danielguillaumont.wheresthemini.data.photo.PendingParkingPhoto
 import com.danielguillaumont.wheresthemini.domain.model.ParkingLocation
 import com.danielguillaumont.wheresthemini.ui.theme.AsphaltGrey
 import com.danielguillaumont.wheresthemini.ui.theme.BonnetBlack
@@ -73,6 +85,27 @@ fun SaveParkingScreen(
 ) {
     val context =
         LocalContext.current
+
+    val photoManager =
+        remember(context) {
+            ParkingPhotoManager(
+                context.applicationContext
+            )
+        }
+
+    var pendingPhoto by
+    remember {
+        mutableStateOf<
+                PendingParkingPhoto?
+                >(null)
+    }
+
+    var capturedPhotoPath by
+    rememberSaveable {
+        mutableStateOf<String?>(
+            null
+        )
+    }
 
     val locationPermissionLauncher =
         rememberLauncherForActivityResult(
@@ -117,6 +150,53 @@ fun SaveParkingScreen(
             } else {
                 onNotificationPermissionDenied()
             }
+        }
+
+    val takePictureLauncher =
+        rememberLauncherForActivityResult(
+            contract =
+                ActivityResultContracts
+                    .TakePicture()
+        ) { success ->
+
+            val pending =
+                pendingPhoto
+
+            if (
+                success &&
+                pending != null
+            ) {
+                val previousPhoto =
+                    capturedPhotoPath
+
+                capturedPhotoPath =
+                    pending.filePath
+
+                if (
+                    previousPhoto != null &&
+                    previousPhoto !=
+                    pending.filePath
+                ) {
+                    photoManager
+                        .deletePhoto(
+                            previousPhoto
+                        )
+                }
+            } else {
+                pending
+                    ?.let {
+                            cancelledPhoto ->
+
+                        photoManager
+                            .deletePhoto(
+                                cancelledPhoto
+                                    .filePath
+                            )
+                    }
+            }
+
+            pendingPhoto =
+                null
         }
 
     fun hasLocationPermission():
@@ -202,7 +282,9 @@ fun SaveParkingScreen(
                     PackageManager
                         .PERMISSION_GRANTED
 
-        if (permissionGranted) {
+        if (
+            permissionGranted
+        ) {
             onReminderEnabledChange(
                 true
             )
@@ -213,6 +295,35 @@ fun SaveParkingScreen(
                         .POST_NOTIFICATIONS
                 )
         }
+    }
+
+    fun takeParkingPhoto() {
+        val photo =
+            photoManager
+                .createParkingPhoto()
+
+        pendingPhoto =
+            photo
+
+        takePictureLauncher
+            .launch(
+                photo.uri
+            )
+    }
+
+    fun removeParkingPhoto() {
+        capturedPhotoPath
+            ?.let {
+                    filePath ->
+
+                photoManager
+                    .deletePhoto(
+                        filePath
+                    )
+            }
+
+        capturedPhotoPath =
+            null
     }
 
     Scaffold(
@@ -332,6 +443,9 @@ fun SaveParkingScreen(
                 formState =
                     formState,
 
+                capturedPhotoPath =
+                    capturedPhotoPath,
+
                 onParkingLevelChange =
                     onParkingLevelChange,
 
@@ -351,7 +465,13 @@ fun SaveParkingScreen(
                     ::requestReminderChange,
 
                 onCaptureLocation =
-                    ::requestCurrentLocation
+                    ::requestCurrentLocation,
+
+                onTakeParkingPhoto =
+                    ::takeParkingPhoto,
+
+                onRemoveParkingPhoto =
+                    ::removeParkingPhoto
             )
 
             Spacer(
@@ -421,13 +541,25 @@ fun SaveParkingScreen(
 @Composable
 private fun ParkingTicket(
     formState: ParkingFormState,
-    onParkingLevelChange: (String) -> Unit,
-    onSpotNumberChange: (String) -> Unit,
-    onNoteChange: (String) -> Unit,
-    onParkingExpirySelected: (Int, Int) -> Unit,
-    onClearParkingExpiry: () -> Unit,
-    onReminderChange: (Boolean) -> Unit,
-    onCaptureLocation: () -> Unit
+    capturedPhotoPath: String?,
+    onParkingLevelChange:
+        (String) -> Unit,
+    onSpotNumberChange:
+        (String) -> Unit,
+    onNoteChange:
+        (String) -> Unit,
+    onParkingExpirySelected:
+        (Int, Int) -> Unit,
+    onClearParkingExpiry:
+        () -> Unit,
+    onReminderChange:
+        (Boolean) -> Unit,
+    onCaptureLocation:
+        () -> Unit,
+    onTakeParkingPhoto:
+        () -> Unit,
+    onRemoveParkingPhoto:
+        () -> Unit
 ) {
     Surface(
         modifier =
@@ -622,68 +754,15 @@ private fun ParkingTicket(
                     )
             )
 
-            Text(
-                text =
-                    "PHOTOGRAPHIC EVIDENCE",
-                style =
-                    MaterialTheme
-                        .typography
-                        .labelMedium,
-                color =
-                    AsphaltGrey
-            )
+            PhotoEvidenceSection(
+                capturedPhotoPath =
+                    capturedPhotoPath,
 
-            Spacer(
-                modifier =
-                    Modifier.height(
-                        8.dp
-                    )
-            )
+                onTakeParkingPhoto =
+                    onTakeParkingPhoto,
 
-            OutlinedButton(
-                onClick = {},
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .height(
-                            54.dp
-                        ),
-                shape =
-                    RoundedCornerShape(
-                        14.dp
-                    ),
-                colors =
-                    ButtonDefaults
-                        .outlinedButtonColors(
-                            contentColor =
-                                BonnetBlack
-                        )
-            ) {
-                Text(
-                    text =
-                        "ADD PARKING PHOTO",
-                    style =
-                        MaterialTheme
-                            .typography
-                            .labelMedium
-                )
-            }
-
-            Text(
-                text =
-                    "Camera support is coming shortly.",
-                style =
-                    MaterialTheme
-                        .typography
-                        .bodyMedium,
-                fontStyle =
-                    FontStyle.Italic,
-                color =
-                    MutedGrey,
-                modifier =
-                    Modifier.padding(
-                        top = 6.dp
-                    )
+                onRemoveParkingPhoto =
+                    onRemoveParkingPhoto
             )
 
             Spacer(
@@ -727,11 +806,255 @@ private fun ParkingTicket(
 }
 
 @Composable
+private fun PhotoEvidenceSection(
+    capturedPhotoPath: String?,
+    onTakeParkingPhoto: () -> Unit,
+    onRemoveParkingPhoto: () -> Unit
+) {
+    Text(
+        text =
+            "PHOTOGRAPHIC EVIDENCE",
+        style =
+            MaterialTheme
+                .typography
+                .labelMedium,
+        color =
+            AsphaltGrey
+    )
+
+    Spacer(
+        modifier =
+            Modifier.height(
+                8.dp
+            )
+    )
+
+    if (
+        capturedPhotoPath ==
+        null
+    ) {
+        OutlinedButton(
+            onClick =
+                onTakeParkingPhoto,
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .height(
+                        54.dp
+                    ),
+            shape =
+                RoundedCornerShape(
+                    14.dp
+                ),
+            colors =
+                ButtonDefaults
+                    .outlinedButtonColors(
+                        contentColor =
+                            BonnetBlack
+                    )
+        ) {
+            Text(
+                text =
+                    "ADD PARKING PHOTO",
+                style =
+                    MaterialTheme
+                        .typography
+                        .labelMedium
+            )
+        }
+
+        Text(
+            text =
+                "No evidence yet. Suspicious.",
+            style =
+                MaterialTheme
+                    .typography
+                    .bodyMedium,
+            fontStyle =
+                FontStyle.Italic,
+            color =
+                MutedGrey,
+            modifier =
+                Modifier.padding(
+                    top = 6.dp
+                )
+        )
+
+        return
+    }
+
+    val photoBitmap =
+        remember(
+            capturedPhotoPath
+        ) {
+            BitmapFactory
+                .decodeFile(
+                    capturedPhotoPath
+                )
+                ?.asImageBitmap()
+        }
+
+    if (
+        photoBitmap !=
+        null
+    ) {
+        Image(
+            bitmap =
+                photoBitmap,
+            contentDescription =
+                "Parking location evidence",
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .height(
+                        190.dp
+                    )
+                    .clip(
+                        RoundedCornerShape(
+                            14.dp
+                        )
+                    ),
+            contentScale =
+                ContentScale.Crop
+        )
+    } else {
+        Surface(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .height(
+                        100.dp
+                    ),
+            shape =
+                RoundedCornerShape(
+                    14.dp
+                ),
+            color =
+                BritishRed.copy(
+                    alpha = 0.08f
+                )
+        ) {
+            Box(
+                contentAlignment =
+                    Alignment.Center
+            ) {
+                Text(
+                    text =
+                        "EVIDENCE COULD NOT BE LOADED",
+                    style =
+                        MaterialTheme
+                            .typography
+                            .labelMedium,
+                    color =
+                        BritishRed
+                )
+            }
+        }
+    }
+
+    Text(
+        text =
+            "● EVIDENCE SECURED",
+        style =
+            MaterialTheme
+                .typography
+                .labelMedium,
+        color =
+            MiniCitron,
+        modifier =
+            Modifier.padding(
+                top = 10.dp
+            )
+    )
+
+    Text(
+        text =
+            "An unusually thorough parking investigation.",
+        style =
+            MaterialTheme
+                .typography
+                .bodyMedium,
+        fontStyle =
+            FontStyle.Italic,
+        color =
+            MutedGrey,
+        modifier =
+            Modifier.padding(
+                top = 3.dp
+            )
+    )
+
+    Spacer(
+        modifier =
+            Modifier.height(
+                10.dp
+            )
+    )
+
+    Row(
+        modifier =
+            Modifier.fillMaxWidth()
+    ) {
+
+        OutlinedButton(
+            onClick =
+                onTakeParkingPhoto,
+            modifier =
+                Modifier.weight(
+                    1f
+                ),
+            shape =
+                RoundedCornerShape(
+                    12.dp
+                )
+        ) {
+            Text(
+                text =
+                    "RETAKE",
+                style =
+                    MaterialTheme
+                        .typography
+                        .labelMedium
+            )
+        }
+
+        Spacer(
+            modifier =
+                Modifier.weight(
+                    0.08f
+                )
+        )
+
+        TextButton(
+            onClick =
+                onRemoveParkingPhoto,
+            modifier =
+                Modifier.weight(
+                    1f
+                )
+        ) {
+            Text(
+                text =
+                    "REMOVE",
+                style =
+                    MaterialTheme
+                        .typography
+                        .labelMedium,
+                color =
+                    BritishRed
+            )
+        }
+    }
+}
+
+@Composable
 private fun ParkingExpirySelector(
     expiryText: String,
     expiryMillis: Long?,
-    onParkingExpirySelected: (Int, Int) -> Unit,
-    onClearParkingExpiry: () -> Unit
+    onParkingExpirySelected:
+        (Int, Int) -> Unit,
+    onClearParkingExpiry:
+        () -> Unit
 ) {
     val context =
         LocalContext.current
