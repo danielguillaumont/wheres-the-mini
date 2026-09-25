@@ -3,6 +3,7 @@ package com.danielguillaumont.wheresthemini.presentation.parking
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.danielguillaumont.wheresthemini.data.notification.ParkingReminderScheduler
+import com.danielguillaumont.wheresthemini.data.photo.deleteParkingPhotoFile
 import com.danielguillaumont.wheresthemini.data.repository.ParkingRepository
 import com.danielguillaumont.wheresthemini.domain.model.ParkingLocation
 import com.danielguillaumont.wheresthemini.domain.model.ParkingSession
@@ -90,6 +91,8 @@ class ParkingViewModel(
     }
 
     fun beginNewParking() {
+        cleanupUnsavedFormPhoto()
+
         _uiState.value =
             _uiState.value.copy(
                 form =
@@ -102,6 +105,8 @@ class ParkingViewModel(
             _uiState.value
                 .currentParking
                 ?: return
+
+        cleanupUnsavedFormPhoto()
 
         _uiState.value =
             _uiState.value.copy(
@@ -190,6 +195,26 @@ class ParkingViewModel(
     fun setPhotoPath(
         photoPath: String
     ) {
+        val previousFormPhotoPath =
+            _uiState.value
+                .form
+                .photoPath
+
+        val persistedPhotoPath =
+            _uiState.value
+                .currentParking
+                ?.photoPath
+
+        if (
+            previousFormPhotoPath != null &&
+            previousFormPhotoPath != photoPath &&
+            previousFormPhotoPath != persistedPhotoPath
+        ) {
+            deleteParkingPhotoFile(
+                previousFormPhotoPath
+            )
+        }
+
         _uiState.value =
             _uiState.value.copy(
                 form =
@@ -203,6 +228,25 @@ class ParkingViewModel(
     }
 
     fun clearPhoto() {
+        val formPhotoPath =
+            _uiState.value
+                .form
+                .photoPath
+
+        val persistedPhotoPath =
+            _uiState.value
+                .currentParking
+                ?.photoPath
+
+        if (
+            formPhotoPath != null &&
+            formPhotoPath != persistedPhotoPath
+        ) {
+            deleteParkingPhotoFile(
+                formPhotoPath
+            )
+        }
+
         _uiState.value =
             _uiState.value.copy(
                 form =
@@ -410,6 +454,10 @@ class ParkingViewModel(
             _uiState.value
                 .currentParking
 
+        val previousPersistedPhotoPath =
+            existingParking
+                ?.photoPath
+
         val parkingSession =
             ParkingSession(
                 id =
@@ -465,6 +513,16 @@ class ParkingViewModel(
             repository.saveParking(
                 parkingSession
             )
+
+            if (
+                previousPersistedPhotoPath != null &&
+                previousPersistedPhotoPath !=
+                parkingSession.photoPath
+            ) {
+                deleteParkingPhotoFile(
+                    previousPersistedPhotoPath
+                )
+            }
 
             reminderScheduler
                 .cancelReminder(
@@ -542,5 +600,31 @@ class ParkingViewModel(
                     parkingId
                 )
         }
+    }
+
+    private fun cleanupUnsavedFormPhoto() {
+        val formPhotoPath =
+            _uiState.value
+                .form
+                .photoPath
+
+        val persistedPhotoPath =
+            _uiState.value
+                .currentParking
+                ?.photoPath
+
+        if (
+            formPhotoPath != null &&
+            formPhotoPath != persistedPhotoPath
+        ) {
+            deleteParkingPhotoFile(
+                formPhotoPath
+            )
+        }
+    }
+
+    override fun onCleared() {
+        cleanupUnsavedFormPhoto()
+        super.onCleared()
     }
 }

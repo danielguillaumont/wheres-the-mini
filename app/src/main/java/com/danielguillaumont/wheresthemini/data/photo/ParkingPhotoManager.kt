@@ -15,17 +15,13 @@ class ParkingPhotoManager(
     private val context: Context
 ) {
 
-    fun createParkingPhoto():
-            PendingParkingPhoto {
-
+    fun createParkingPhoto(): PendingParkingPhoto {
         val picturesDirectory =
             context.getExternalFilesDir(
                 Environment.DIRECTORY_PICTURES
             ) ?: context.filesDir
 
-        if (
-            !picturesDirectory.exists()
-        ) {
+        if (!picturesDirectory.exists()) {
             picturesDirectory.mkdirs()
         }
 
@@ -44,21 +40,39 @@ class ParkingPhotoManager(
             )
 
         return PendingParkingPhoto(
-            filePath =
-                photoFile.absolutePath,
-
-            uri =
-                photoUri
+            filePath = photoFile.absolutePath,
+            uri = photoUri
         )
     }
 
     fun deletePhoto(
         filePath: String
-    ) {
-        runCatching {
+    ): Boolean {
+        return deleteParkingPhotoFile(
+            filePath
+        )
+    }
+}
+
+fun deleteParkingPhotoFile(
+    filePath: String?
+): Boolean {
+    if (filePath.isNullOrBlank()) {
+        return false
+    }
+
+    return runCatching {
+        val file =
             File(
                 filePath
-            ).delete()
+            )
+
+        if (!file.exists()) {
+            true
+        } else {
+            file.delete()
         }
-    }
+    }.getOrDefault(
+        false
+    )
 }
